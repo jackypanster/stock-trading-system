@@ -1,8 +1,91 @@
 # config/stocks/TSLA.yaml
+# 特斯拉 (TSLA) 个股配置
 stock:
   symbol: "TSLA"
   name: "Tesla Inc."
+  active: true
+  market: "NASDAQ"
+  sector: "Automotive"
+  
+# 策略配置
 strategy:
-  type: "support_resistance"
-  parameters:
-    support_levels: [230, 240, 250]
+  type: "support_resistance"        # 主要策略类型
+  
+  # 技术分析参数
+  technical:
+    lookback_days: 20               # 历史数据回望天数
+    support_resistance:
+      window: 15                    # 支撑阻力位识别窗口
+      min_touches: 2                # 最小触及次数
+      tolerance: 0.015              # 价位容忍度 (1.5%)
+    
+    indicators:
+      rsi_period: 14
+      rsi_oversold: 30              # RSI超卖阈值
+      rsi_overbought: 70            # RSI超买阈值
+      
+      macd_fast: 12
+      macd_slow: 26
+      macd_signal: 9
+      
+      volume_threshold: 1.5         # 成交量放大倍数
+
+# 风险控制
+risk:
+  # 仓位管理
+  max_position_pct: 0.15            # 最大仓位比例 (15%)
+  max_position_value: 15000         # 最大仓位金额
+  
+  # 止损止盈
+  stop_loss_pct: 0.025              # 止损比例 (2.5%)
+  take_profit_levels:               # 分层止盈
+    - level: 0.03                   # 3% 止盈一半
+      quantity_pct: 0.5
+    - level: 0.06                   # 6% 全部止盈
+      quantity_pct: 1.0
+  
+  # 交易频率
+  max_daily_trades: 3               # 每日最大交易次数
+  min_trade_interval: 1800          # 最小交易间隔（秒）
+  
+  # 资金管理
+  min_trade_amount: 1000            # 最小交易金额
+  position_sizing: "fixed_percent"  # 仓位计算方式
+
+# 信号参数
+signals:
+  min_confidence: 0.65              # 最小信号置信度
+  
+  # 买入信号条件
+  buy_conditions:
+    near_support: 0.01              # 接近支撑位距离
+    rsi_oversold: true              # 需要RSI超卖确认
+    volume_confirmation: true       # 需要成交量确认
+    
+  # 卖出信号条件  
+  sell_conditions:
+    near_resistance: 0.01           # 接近阻力位距离
+    rsi_overbought: true            # 需要RSI超买确认
+    volume_confirmation: true
+    
+  # 信号有效期
+  signal_expiry: 1800               # 信号有效期（秒）
+
+# 监控设置
+monitoring:
+  enabled: true
+  priority: "high"                  # 监控优先级
+  alert_threshold: 0.8              # 告警阈值
+
+# 特殊设置
+special:
+  earnings_pause: true              # 财报期间暂停交易
+  news_sensitivity: "medium"        # 新闻敏感度
+  volatility_filter: 0.025          # 最小波动率过滤
+
+# 回测设置
+backtest:
+  enabled: true
+  start_date: "2023-01-01"
+  commission_rate: 0.001            # 手续费率
+  slippage: 0.0005                  # 滑点

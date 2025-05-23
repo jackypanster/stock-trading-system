@@ -1,0 +1,157 @@
+# 美股日内套利助手 - 系统配置
+version: "1.0.0"
+updated: "2024-12-19"
+
+# 应用基础设置
+app:
+  name: "US Stock Intraday Arbitrage Assistant"
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  timezone: "America/New_York"  # 美东时间
+  language: "zh_CN"
+  
+# 数据源配置
+data:
+  # 主数据源
+  primary_source: "yfinance"
+  
+  # 备用数据源
+  fallback_sources:
+    - "alpha_vantage"
+    - "finnhub"
+  
+  # 缓存设置
+  cache:
+    price_ttl: 60          # 价格数据缓存时间（秒）
+    history_ttl: 3600      # 历史数据缓存时间（秒）
+    indicators_ttl: 300    # 技术指标缓存时间（秒）
+  
+  # API限制
+  rate_limits:
+    requests_per_minute: 300
+    requests_per_hour: 5000
+    
+# 分析参数
+analysis:
+  # 默认技术分析参数
+  default_lookback_days: 20
+  min_volume_threshold: 1000000      # 最小成交量
+  min_volatility_threshold: 0.02    # 最小波动率
+  
+  # 支撑阻力位识别
+  support_resistance:
+    window: 20
+    min_touches: 2
+    tolerance: 0.01
+  
+  # 技术指标参数
+  indicators:
+    rsi_period: 14
+    macd_fast: 12
+    macd_slow: 26
+    macd_signal: 9
+    atr_period: 14
+    volume_ma_period: 20
+
+# 风险控制全局设置
+risk:
+  # 总仓位控制
+  max_total_exposure: 0.80           # 最大总仓位比例
+  emergency_cash_reserve: 0.05       # 紧急现金储备
+  
+  # 单股票风险
+  default_max_position_pct: 0.15     # 默认单股票最大仓位
+  default_stop_loss_pct: 0.02       # 默认止损比例
+  default_take_profit_pct: 0.05     # 默认止盈比例
+  
+  # 交易频率控制
+  max_daily_trades: 10               # 每日最大交易次数
+  max_trades_per_stock: 3            # 单股票每日最大交易次数
+  
+  # 连续亏损控制
+  max_consecutive_losses: 3          # 最大连续亏损次数
+  loss_pause_hours: 2                # 连续亏损后暂停时间
+
+# 信号生成设置
+signals:
+  min_confidence: 0.60               # 最小信号置信度
+  max_signals_per_analysis: 5        # 单次分析最大信号数
+  signal_expiry_minutes: 30          # 信号有效期
+  
+  # 信号过滤
+  filters:
+    volume_confirmation: true        # 需要成交量确认
+    trend_confirmation: true         # 需要趋势确认
+    rsi_bounds: [20, 80]            # RSI有效范围
+
+# 监控设置
+monitoring:
+  # 实时监控
+  update_interval: 300               # 更新间隔（秒）
+  market_hours_only: true           # 仅在交易时间监控
+  
+  # 交易时间（美东时间）
+  trading_hours:
+    start: "09:30"
+    end: "16:00"
+    timezone: "America/New_York"
+  
+  # 盘前盘后
+  extended_hours:
+    enabled: false
+    premarket_start: "04:00"
+    aftermarket_end: "20:00"
+
+# 通知设置
+notifications:
+  enabled: true
+  
+  # 通知类型
+  types:
+    - "high_confidence_signals"      # 高置信度信号
+    - "stop_loss_triggered"         # 止损触发
+    - "daily_summary"               # 日度总结
+    - "system_errors"               # 系统错误
+  
+  # 通知渠道
+  channels:
+    console: true                    # 控制台输出
+    file: true                      # 文件记录
+    email: false                    # 邮件通知
+    webhook: false                  # Webhook通知
+
+# 数据库设置
+database:
+  type: "sqlite"
+  path: "data/trading_assistant.db"
+  
+  # 备份设置
+  backup:
+    enabled: true
+    frequency: "daily"
+    retention_days: 30
+    path: "backups/"
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # 日志文件
+  files:
+    main: "logs/trading_assistant.log"
+    errors: "logs/errors.log"
+    trades: "logs/trades.log"
+  
+  # 日志轮转
+  rotation:
+    max_size: "10MB"
+    backup_count: 5
+
+# 性能设置
+performance:
+  max_workers: 4                     # 最大工作线程数
+  memory_limit: "500MB"              # 内存限制
+  
+  # 并发控制
+  concurrent_analysis: 3             # 并发分析股票数
+  batch_size: 10                     # 批处理大小 

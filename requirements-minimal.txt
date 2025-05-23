@@ -1,0 +1,33 @@
+# 美股日内套利助手 - MVP最小化依赖
+# 仅包含核心功能必需的包
+
+# CLI和配置
+click>=8.1.0
+PyYAML>=6.0
+python-dotenv>=1.0.0
+
+# 数据处理
+yfinance>=0.2.18
+pandas>=2.0.0
+numpy>=1.24.0
+requests>=2.31.0
+
+# 技术分析（不依赖TA-Lib）
+pandas-ta>=0.3.14b
+
+# 数据存储
+sqlalchemy>=2.0.0
+
+# 缓存
+diskcache>=5.6.3
+
+# 日志
+structlog>=23.1.0
+
+# 时间处理
+pytz>=2023.3
+python-dateutil>=2.8.2
+
+# 测试（开发用）
+pytest>=7.4.0
+pytest-cov>=4.1.0 
