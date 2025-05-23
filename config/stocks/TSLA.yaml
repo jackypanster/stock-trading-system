@@ -1,0 +1,8 @@
+# config/stocks/TSLA.yaml
+stock:
+  symbol: "TSLA"
+  name: "Tesla Inc."
+strategy:
+  type: "support_resistance"
+  parameters:
+    support_levels: [230, 240, 250]
