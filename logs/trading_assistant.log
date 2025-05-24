@@ -11,3 +11,75 @@
 2025-05-23 18:09:28,219 - test - [31mERROR[0m - 错误日志(应显示)
 2025-05-23 18:10:25,717 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
 2025-05-23 18:12:39,859 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
+2025-05-24 12:39:04,342 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
+2025-05-24 12:39:05,504 - numexpr.utils - INFO - NumExpr defaulting to 8 threads.
+2025-05-24 12:39:06,236 - app.core.config - [32mINFO[0m - 加载系统配置: config/system.yaml
+2025-05-24 12:39:06,258 - app.core.config - [32mINFO[0m - 已加载 1 个股票配置
+2025-05-24 12:39:06,259 - app.core.config - [32mINFO[0m - 已加载 0 个策略配置
+2025-05-24 12:39:06,259 - app.core.config - [32mINFO[0m - 所有配置加载完成
+2025-05-24 12:39:06,259 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成
+2025-05-24 12:39:06,260 - data.fetcher - [32mINFO[0m - 测试数据源连接，使用股票: TSLA
+2025-05-24 12:39:06,260 - data.fetcher - [32mINFO[0m - 获取 TSLA 当前价格
+2025-05-24 12:39:12,760 - data.fetcher - [31mERROR[0m - 获取 TSLA 价格失败: Too Many Requests. Rate limited. Try after a while.
+2025-05-24 12:39:12,761 - data.fetcher - [31mERROR[0m - 数据源连接测试失败: 获取 TSLA 价格失败: Too Many Requests. Rate limited. Try after a while.
+2025-05-24 12:39:29,470 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
+2025-05-24 12:39:30,633 - numexpr.utils - INFO - NumExpr defaulting to 8 threads.
+2025-05-24 12:39:31,403 - app.core.config - [32mINFO[0m - 加载系统配置: config/system.yaml
+2025-05-24 12:39:31,423 - app.core.config - [32mINFO[0m - 已加载 1 个股票配置
+2025-05-24 12:39:31,423 - app.core.config - [32mINFO[0m - 已加载 0 个策略配置
+2025-05-24 12:39:31,424 - app.core.config - [32mINFO[0m - 所有配置加载完成
+2025-05-24 12:39:31,424 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成
+2025-05-24 12:39:31,424 - data.fetcher - [32mINFO[0m - 测试数据源连接，使用股票: AAPL
+2025-05-24 12:39:31,425 - data.fetcher - [32mINFO[0m - 获取 AAPL 当前价格
+2025-05-24 12:39:36,685 - data.fetcher - [31mERROR[0m - 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
+2025-05-24 12:39:36,686 - data.fetcher - [31mERROR[0m - 数据源连接测试失败: 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
+2025-05-24 12:40:42,650 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
+2025-05-24 12:40:43,779 - numexpr.utils - INFO - NumExpr defaulting to 8 threads.
+2025-05-24 12:40:44,529 - app.core.config - [32mINFO[0m - 加载系统配置: config/system.yaml
+2025-05-24 12:40:44,553 - app.core.config - [32mINFO[0m - 已加载 1 个股票配置
+2025-05-24 12:40:44,553 - app.core.config - [32mINFO[0m - 已加载 0 个策略配置
+2025-05-24 12:40:44,553 - app.core.config - [32mINFO[0m - 所有配置加载完成
+2025-05-24 12:40:44,553 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成
+2025-05-24 12:40:44,554 - data.fetcher - [32mINFO[0m - 测试数据源连接，使用股票: AAPL
+2025-05-24 12:40:44,554 - data.fetcher - [32mINFO[0m - 获取 AAPL 当前价格
+2025-05-24 12:40:49,558 - data.fetcher - [33mWARNING[0m - fast_info获取失败，尝试使用info: Too Many Requests. Rate limited. Try after a while.
+2025-05-24 12:40:51,380 - data.fetcher - [31mERROR[0m - 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
+2025-05-24 12:40:51,380 - data.fetcher - [31mERROR[0m - 数据源连接测试失败: 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
+2025-05-24 12:42:48,760 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
+2025-05-24 12:42:49,868 - numexpr.utils - INFO - NumExpr defaulting to 8 threads.
+2025-05-24 12:42:50,583 - app.core.config - [32mINFO[0m - 加载系统配置: config/system.yaml
+2025-05-24 12:42:50,605 - app.core.config - [32mINFO[0m - 已加载 1 个股票配置
+2025-05-24 12:42:50,605 - app.core.config - [32mINFO[0m - 已加载 0 个策略配置
+2025-05-24 12:42:50,606 - app.core.config - [32mINFO[0m - 所有配置加载完成
+2025-05-24 12:42:50,606 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成
+2025-05-24 12:42:50,606 - data.fetcher - [32mINFO[0m - 模拟数据获取器初始化完成
+2025-05-24 12:42:50,606 - data.fetcher - [32mINFO[0m - 测试模拟数据源连接，使用股票: TSLA
+2025-05-24 12:42:50,607 - data.fetcher - [32mINFO[0m - 获取 TSLA 模拟价格数据
+2025-05-24 12:42:51,113 - data.fetcher - [32mINFO[0m - 成功生成 TSLA 模拟价格: $248.71
+2025-05-24 12:42:51,113 - data.fetcher - [32mINFO[0m - 模拟数据源连接测试成功
+2025-05-24 12:42:51,114 - data.fetcher - [32mINFO[0m - 生成 TSLA 模拟历史数据: 5d, 1d
+2025-05-24 12:42:51,441 - data.fetcher - [32mINFO[0m - 成功生成 TSLA 模拟历史数据: 5 条记录
+2025-05-24 12:42:51,445 - data.fetcher - [32mINFO[0m - 生成 TSLA 模拟股票信息
+2025-05-24 12:42:51,650 - data.fetcher - [32mINFO[0m - 成功生成 TSLA 模拟股票信息
+2025-05-24 12:42:51,651 - __main__ - [32mINFO[0m - 数据获取测试完成: TSLA (模拟模式: True)
+2025-05-24 12:43:01,834 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
+2025-05-24 12:43:02,784 - numexpr.utils - INFO - NumExpr defaulting to 8 threads.
+2025-05-24 12:43:03,437 - app.core.config - [32mINFO[0m - 加载系统配置: config/system.yaml
+2025-05-24 12:43:03,459 - app.core.config - [32mINFO[0m - 已加载 1 个股票配置
+2025-05-24 12:43:03,459 - app.core.config - [32mINFO[0m - 已加载 0 个策略配置
+2025-05-24 12:43:03,459 - app.core.config - [32mINFO[0m - 所有配置加载完成
+2025-05-24 12:43:03,460 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成
+2025-05-24 12:43:03,460 - data.fetcher - [32mINFO[0m - 模拟数据获取器初始化完成
+2025-05-24 12:43:03,460 - data.fetcher - [32mINFO[0m - 测试模拟数据源连接，使用股票: TSLA
+2025-05-24 12:43:03,461 - data.fetcher - [32mINFO[0m - 模拟数据源连接测试成功
+2025-05-24 12:43:03,461 - data.fetcher - [32mINFO[0m - 生成 TSLA 模拟历史数据: 10d, 1d
+2025-05-24 12:43:03,785 - data.fetcher - [32mINFO[0m - 成功生成 TSLA 模拟历史数据: 8 条记录
+2025-05-24 12:43:03,790 - __main__ - [32mINFO[0m - 数据获取测试完成: TSLA (模拟模式: True)
+2025-05-24 12:44:03,975 - app.core.config - [32mINFO[0m - 加载系统配置: /Users/zhibinpan/workspace/stock-trading-system/config/system.yaml
+2025-05-24 12:44:04,010 - app.core.config - [32mINFO[0m - 已加载 1 个股票配置
+2025-05-24 12:44:04,010 - app.core.config - [32mINFO[0m - 已加载 0 个策略配置
+2025-05-24 12:44:04,011 - app.core.config - [32mINFO[0m - 所有配置加载完成
+2025-05-24 12:44:04,011 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成
+2025-05-24 12:44:04,011 - data.fetcher - [32mINFO[0m - 模拟数据获取器初始化完成
+2025-05-24 12:44:04,012 - data.fetcher - [32mINFO[0m - 获取 AAPL 模拟价格数据
+2025-05-24 12:44:04,518 - data.fetcher - [32mINFO[0m - 成功生成 AAPL 模拟价格: $174.5

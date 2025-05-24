@@ -257,8 +257,9 @@ def config_validate(ctx):
 @cli.command()
 @click.argument('symbol')
 @click.option('--days', default=5, help='测试数据天数')
+@click.option('--mock', is_flag=True, help='使用模拟数据进行演示')
 @click.pass_context
-def test_data(ctx, symbol, days):
+def test_data(ctx, symbol, days, mock):
     """
     测试数据获取功能
     
@@ -268,19 +269,100 @@ def test_data(ctx, symbol, days):
     
     click.echo(f"🧪 测试数据获取: {symbol.upper()}")
     click.echo(f"📅 数据天数: {days}天")
+    if mock:
+        click.echo("🎭 使用模拟数据模式")
     
     try:
-        # TODO: 实现数据获取测试
-        click.echo("⏳ 连接数据源...")
-        click.echo("✅ 数据源连接成功 (模拟)")
-        click.echo(f"📊 获取 {symbol.upper()} 数据... (模拟)")
-        click.echo("✅ 数据获取成功 (模拟)")
+        # 导入数据获取器
+        from app.data.fetcher import get_fetcher, DataFetchError
         
-        if logger:
-            logger.info(f"测试数据获取完成: {symbol}")
+        fetcher = get_fetcher(use_mock=mock)
+        
+        # 1. 测试连接
+        click.echo("⏳ 测试数据源连接...")
+        if fetcher.test_connection(symbol):
+            click.echo("✅ 数据源连接成功")
+        else:
+            click.echo("❌ 数据源连接失败")
+            return
+        
+        # 2. 获取当前价格
+        click.echo(f"⏳ 获取 {symbol.upper()} 当前价格...")
+        try:
+            price_data = fetcher.get_current_price(symbol)
             
-        click.echo("\n⚠️  注意: 数据获取功能正在开发中，当前为模拟测试")
+            click.echo("\n📊 当前价格信息:")
+            click.echo(f"股票代码: {price_data['symbol']}")
+            click.echo(f"当前价格: ${price_data['current_price']:.2f}")
+            if price_data.get('change'):
+                change_symbol = "📈" if price_data['change'] > 0 else "📉"
+                click.echo(f"涨跌: {change_symbol} ${price_data['change']:.2f} ({price_data['change_percent']:.2f}%)")
+            click.echo(f"开盘价: ${price_data['open_price']:.2f}")
+            click.echo(f"最高价: ${price_data['day_high']:.2f}")
+            click.echo(f"最低价: ${price_data['day_low']:.2f}")
+            click.echo(f"成交量: {price_data['volume']:,}")
+            click.echo(f"交易所: {price_data['exchange']}")
+            
+        except DataFetchError as e:
+            click.echo(f"❌ 获取价格失败: {e}")
+            return
         
+        # 3. 获取历史数据
+        period_map = {
+            1: "1d", 2: "2d", 3: "5d", 4: "5d", 5: "5d",
+            10: "10d", 20: "1mo", 30: "1mo"
+        }
+        period = period_map.get(days, "5d")
+        
+        click.echo(f"\n⏳ 获取 {days} 天历史数据...")
+        try:
+            hist_data = fetcher.get_historical_data(symbol, period=period)
+            
+            click.echo(f"\n📈 历史数据 (最近{len(hist_data)}条记录):")
+            click.echo("日期\t\t开盘\t最高\t最低\t收盘\t成交量")
+            click.echo("-" * 60)
+            
+            # 显示最近几天的数据
+            for idx, (date, row) in enumerate(hist_data.tail(min(5, len(hist_data))).iterrows()):
+                date_str = date.strftime("%Y-%m-%d")
+                click.echo(f"{date_str}\t{row['Open']:.2f}\t{row['High']:.2f}\t{row['Low']:.2f}\t{row['Close']:.2f}\t{row['Volume']:,}")
+            
+            if len(hist_data) > 5:
+                click.echo(f"... (共 {len(hist_data)} 条记录)")
+                
+        except DataFetchError as e:
+            click.echo(f"❌ 获取历史数据失败: {e}")
+        
+        # 4. 获取股票信息
+        click.echo(f"\n⏳ 获取 {symbol.upper()} 基本信息...")
+        try:
+            stock_info = fetcher.get_stock_info(symbol)
+            
+            click.echo(f"\n🏢 股票信息:")
+            click.echo(f"公司名称: {stock_info.get('company_name', 'N/A')}")
+            click.echo(f"行业: {stock_info.get('sector', 'N/A')} - {stock_info.get('industry', 'N/A')}")
+            click.echo(f"国家: {stock_info.get('country', 'N/A')}")
+            if stock_info.get('market_cap'):
+                market_cap_b = stock_info['market_cap'] / 1e9
+                click.echo(f"市值: ${market_cap_b:.1f}B")
+            if stock_info.get('beta'):
+                click.echo(f"Beta: {stock_info['beta']:.2f}")
+            if stock_info.get('trailing_pe'):
+                click.echo(f"市盈率: {stock_info['trailing_pe']:.2f}")
+                
+        except DataFetchError as e:
+            click.echo(f"⚠️ 获取股票信息失败: {e}")
+        
+        # 记录日志
+        if logger:
+            logger.info(f"数据获取测试完成: {symbol} (模拟模式: {mock})")
+            
+        click.echo(f"\n✅ 数据获取测试完成！")
+        
+    except ImportError as e:
+        click.echo(f"❌ 导入数据模块失败: {e}")
+        if logger:
+            logger.error(f"数据模块导入失败: {e}")
     except Exception as e:
         click.echo(f"❌ 数据获取测试失败: {e}", err=True)
         if logger:
