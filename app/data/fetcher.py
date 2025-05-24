@@ -56,7 +56,14 @@ class StockDataFetcher:
         self.rate_limits = self.config.get('rate_limits', {})
         self.last_request_time = 0
         
-        logger.info("股票数据获取器初始化完成")
+        # 数据源配置
+        self.primary_source = self.config.get('primary_source', 'yfinance')
+        self.backup_sources = self.config.get('backup_sources', ['mock'])
+        self.current_source = self.primary_source
+        self.source_failures = {}  # 记录各数据源失败次数
+        self.max_failures = 3  # 最大失败次数后切换
+        
+        logger.info(f"股票数据获取器初始化完成，主数据源: {self.primary_source}")
     
     def _enforce_rate_limit(self):
         """强制执行API请求频率限制"""
@@ -148,6 +155,123 @@ class StockDataFetcher:
             logger.warning(f"缓存加载失败: {e}")
             return None
     
+    def _should_use_backup(self, source: str) -> bool:
+        """
+        判断是否应该切换到备用数据源
+        
+        Args:
+            source: 数据源名称
+            
+        Returns:
+            是否切换到备用源
+        """
+        failure_count = self.source_failures.get(source, 0)
+        return failure_count >= self.max_failures
+    
+    def _record_source_failure(self, source: str):
+        """记录数据源失败"""
+        self.source_failures[source] = self.source_failures.get(source, 0) + 1
+        logger.warning(f"数据源 {source} 失败 {self.source_failures[source]} 次")
+        
+        # 如果主数据源失败太多次，切换到备用源
+        if source == self.primary_source and self._should_use_backup(source):
+            for backup in self.backup_sources:
+                if not self._should_use_backup(backup):
+                    logger.warning(f"主数据源失败过多，切换到备用数据源: {backup}")
+                    self.current_source = backup
+                    break
+    
+    def _record_source_success(self, source: str):
+        """记录数据源成功，重置失败计数"""
+        if source in self.source_failures:
+            del self.source_failures[source]
+    
+    def _get_data_with_fallback(self, operation_name: str, primary_func, backup_func, *args, **kwargs):
+        """
+        使用备用机制获取数据
+        
+        Args:
+            operation_name: 操作名称
+            primary_func: 主数据源函数
+            backup_func: 备用数据源函数
+            *args, **kwargs: 传递给函数的参数
+            
+        Returns:
+            数据结果
+            
+        Raises:
+            DataFetchError: 所有数据源都失败
+        """
+        # 先尝试当前数据源
+        try:
+            if self.current_source == self.primary_source:
+                result = primary_func(*args, **kwargs)
+                self._record_source_success(self.current_source)
+                return result
+            else:
+                # 当前使用备用源
+                result = backup_func(*args, **kwargs)
+                self._record_source_success(self.current_source)
+                return result
+                
+        except Exception as e:
+            logger.warning(f"{operation_name} 使用 {self.current_source} 失败: {e}")
+            self._record_source_failure(self.current_source)
+            
+            # 如果当前是主数据源，尝试备用源
+            if self.current_source == self.primary_source:
+                for backup in self.backup_sources:
+                    if not self._should_use_backup(backup):
+                        try:
+                            logger.info(f"{operation_name} 尝试备用数据源: {backup}")
+                            if backup == 'mock':
+                                # 创建临时的模拟数据获取器
+                                mock_fetcher = MockDataFetcher(self.config)
+                                if operation_name == '获取价格':
+                                    result = mock_fetcher.get_current_price(*args, **kwargs)
+                                elif operation_name == '获取历史数据':
+                                    result = mock_fetcher.get_historical_data(*args, **kwargs)
+                                elif operation_name == '获取股票信息':
+                                    result = mock_fetcher.get_stock_info(*args, **kwargs)
+                                else:
+                                    result = backup_func(*args, **kwargs)
+                            else:
+                                result = backup_func(*args, **kwargs)
+                            
+                            self._record_source_success(backup)
+                            self.current_source = backup
+                            logger.info(f"{operation_name} 成功切换到备用数据源: {backup}")
+                            return result
+                            
+                        except Exception as backup_error:
+                            logger.warning(f"{operation_name} 备用数据源 {backup} 也失败: {backup_error}")
+                            self._record_source_failure(backup)
+                            continue
+            
+            # 所有数据源都失败
+            raise DataFetchError(f"{operation_name} 失败：所有数据源不可用")
+    
+    def reset_sources(self):
+        """重置数据源状态，回到主数据源"""
+        self.current_source = self.primary_source
+        self.source_failures.clear()
+        logger.info("数据源状态已重置，回到主数据源")
+    
+    def get_source_status(self) -> Dict[str, Any]:
+        """
+        获取数据源状态信息
+        
+        Returns:
+            数据源状态字典
+        """
+        return {
+            'primary_source': self.primary_source,
+            'current_source': self.current_source,
+            'backup_sources': self.backup_sources,
+            'source_failures': self.source_failures.copy(),
+            'max_failures': self.max_failures
+        }
+    
     def get_current_price(self, symbol: str) -> Dict[str, Any]:
         """
         获取股票当前价格
@@ -167,8 +291,9 @@ class StockDataFetcher:
         if cached_data:
             return cached_data
         
-        try:
-            logger.info(f"获取 {symbol} 当前价格")
+        def _get_price_from_yfinance(symbol):
+            """从yfinance获取价格"""
+            logger.info(f"获取 {symbol} 当前价格 (yfinance)")
             
             # 强制执行频率限制
             self._enforce_rate_limit()
@@ -227,10 +352,26 @@ class StockDataFetcher:
                 price_data['change'] = price_data['current_price'] - price_data['previous_close']
                 price_data['change_percent'] = (price_data['change'] / price_data['previous_close']) * 100
             
+            return price_data
+        
+        def _get_price_from_mock(symbol):
+            """从模拟数据源获取价格"""
+            mock_fetcher = MockDataFetcher(self.config)
+            return mock_fetcher.get_current_price(symbol)
+        
+        try:
+            # 使用备用机制获取数据
+            price_data = self._get_data_with_fallback(
+                "获取价格",
+                _get_price_from_yfinance,
+                _get_price_from_mock,
+                symbol
+            )
+            
             # 缓存数据
             self._save_to_cache(cache_key, price_data, 'price')
             
-            logger.info(f"成功获取 {symbol} 价格: ${price_data['current_price']}")
+            logger.info(f"成功获取 {symbol} 价格: ${price_data['current_price']} (数据源: {self.current_source})")
             return price_data
             
         except Exception as e:
@@ -749,3 +890,87 @@ def get_fetcher(use_mock: bool = False) -> StockDataFetcher:
             _global_fetcher = StockDataFetcher()
     
     return _global_fetcher 
+
+
+class FailingDataFetcher(StockDataFetcher):
+    """
+    故意失败的数据获取器
+    
+    用于测试备用数据源切换机制。
+    """
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None, fail_after: int = 0):
+        """
+        初始化故意失败的数据获取器
+        
+        Args:
+            config: 配置字典
+            fail_after: 在第几次调用后开始失败（0表示立即失败）
+        """
+        super().__init__(config)
+        self.fail_after = fail_after
+        self.call_count = 0
+        logger.info(f"故意失败的数据获取器初始化完成，将在第{fail_after}次调用后失败")
+    
+    def get_current_price(self, symbol: str) -> Dict[str, Any]:
+        """模拟获取价格，在指定次数后失败"""
+        self.call_count += 1
+        
+        if self.call_count > self.fail_after:
+            logger.warning(f"模拟主数据源失败 (第{self.call_count}次调用)")
+            raise DataFetchError("模拟的数据源失败")
+        
+        # 前几次成功
+        logger.info(f"模拟主数据源成功 (第{self.call_count}次调用)")
+        return {
+            'symbol': symbol.upper(),
+            'current_price': 100.0 + self.call_count,  # 简单的价格
+            'previous_close': 100.0,
+            'timestamp': datetime.now(),
+            'currency': 'USD',
+            'exchange': 'TEST'
+        }
+
+
+def create_test_fetcher_with_failing_primary() -> StockDataFetcher:
+    """
+    创建用于测试的数据获取器，主数据源会失败
+    
+    Returns:
+        配置了故意失败主数据源的数据获取器
+    """
+    # 创建一个会失败的获取器
+    failing_fetcher = FailingDataFetcher(fail_after=2)  # 前2次成功，之后失败
+    
+    # 重写其备用机制测试
+    original_get_price = failing_fetcher.get_current_price
+    
+    def mock_yfinance_that_fails(symbol):
+        """模拟yfinance失败"""
+        failing_fetcher.call_count += 1
+        if failing_fetcher.call_count > failing_fetcher.fail_after:
+            raise DataFetchError("模拟yfinance失败")
+        return original_get_price(symbol)
+    
+    def mock_backup_source(symbol):
+        """模拟备用数据源（总是成功）"""
+        mock_fetcher = MockDataFetcher()
+        return mock_fetcher.get_current_price(symbol)
+    
+    # 重写_get_data_with_fallback来模拟失败
+    def test_get_current_price(symbol: str):
+        try:
+            return failing_fetcher._get_data_with_fallback(
+                "获取价格",
+                mock_yfinance_that_fails,
+                mock_backup_source,
+                symbol
+            )
+        except Exception as e:
+            logger.error(f"测试获取价格失败: {e}")
+            raise DataFetchError(str(e))
+    
+    # 添加测试方法
+    failing_fetcher.test_get_current_price = test_get_current_price
+    
+    return failing_fetcher 

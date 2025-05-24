@@ -289,8 +289,9 @@ class TradingLogger:
         return logging.getLogger('analysis.engine')
 
 
-# 全局日志管理器实例
+# 全局变量
 _global_logger_manager: Optional[TradingLogger] = None
+_loggers: Dict[str, logging.Logger] = {}  # 添加缺失的全局变量
 
 
 def setup_logging(config: Optional[Dict[str, Any]] = None) -> TradingLogger:
@@ -341,11 +342,38 @@ def get_data_logger() -> logging.Logger:
 
 
 def get_analysis_logger() -> logging.Logger:
-    """获取分析日志器"""
-    if _global_logger_manager is None:
-        setup_logging()
+    """
+    获取技术分析专用日志器
     
-    return _global_logger_manager.get_analysis_logger()
+    Returns:
+        配置好的日志器实例
+    """
+    logger_name = "analysis"
+    
+    if logger_name in _loggers:
+        return _loggers[logger_name]
+    
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.INFO)
+    
+    # 防止重复添加处理器
+    if not logger.handlers:
+        # 控制台处理器
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(_get_colored_formatter())
+        logger.addHandler(console_handler)
+        
+        # 文件处理器
+        analysis_file_handler = _create_file_handler("analysis.log")
+        if analysis_file_handler:
+            logger.addHandler(analysis_file_handler)
+    
+    # 防止日志向上传播
+    logger.propagate = False
+    
+    _loggers[logger_name] = logger
+    return logger
 
 
 # 便捷的日志记录函数
@@ -397,4 +425,28 @@ def log_data_fetch(symbol: str, data_type: str, success: bool, **kwargs):
         'data_type': data_type,
         'success': success,
         **kwargs
-    }) 
+    })
+
+
+def _get_colored_formatter() -> ColoredConsoleFormatter:
+    """获取彩色格式化器"""
+    return ColoredConsoleFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+
+def _create_file_handler(filename: str) -> Optional[logging.Handler]:
+    """创建文件处理器"""
+    try:
+        logs_dir = Path("logs")
+        logs_dir.mkdir(exist_ok=True)
+        
+        handler = logging.handlers.RotatingFileHandler(
+            logs_dir / filename,
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5
+        )
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        ))
+        return handler
+    except Exception:
+        return None 

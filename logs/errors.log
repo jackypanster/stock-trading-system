@@ -5,3 +5,4 @@
 2025-05-24 12:39:36,686 - data.fetcher - [31mERROR[0m - 数据源连接测试失败: 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
 2025-05-24 12:40:51,380 - data.fetcher - [31mERROR[0m - 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
 2025-05-24 12:40:51,380 - data.fetcher - [31mERROR[0m - 数据源连接测试失败: 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
+2025-05-24 13:07:23,200 - __main__ - [31mERROR[0m - 技术分析失败: name '_loggers' is not defined

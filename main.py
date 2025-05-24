@@ -136,8 +136,9 @@ def cli(ctx, version, config, debug):
 @click.option('--format', 'output_format', default='table', 
               type=click.Choice(['table', 'json', 'csv']), help='输出格式')
 @click.option('--days', default=20, help='历史数据天数')
+@click.option('--mock', is_flag=True, help='使用模拟数据')
 @click.pass_context
-def analyze(ctx, symbol, output_format, days):
+def analyze(ctx, symbol, output_format, days, mock):
     """
     分析指定股票的技术指标和交易信号
     
@@ -148,21 +149,135 @@ def analyze(ctx, symbol, output_format, days):
     click.echo(f"🔍 正在分析股票: {symbol.upper()}")
     click.echo(f"📊 分析周期: {days}天")
     click.echo(f"📋 输出格式: {output_format}")
+    if mock:
+        click.echo("🎭 使用模拟数据模式")
     
-    # TODO: 实现具体的分析逻辑
-    if logger:
-        logger.info(f"开始分析股票 {symbol}")
-    
-    # 模拟分析结果
-    click.echo("\n📈 分析结果:")
-    click.echo(f"股票代码: {symbol.upper()}")
-    click.echo(f"当前价格: $XXX.XX (模拟数据)")
-    click.echo(f"RSI: XX.X")
-    click.echo(f"支撑位: $XXX.XX")
-    click.echo(f"阻力位: $XXX.XX")
-    click.echo(f"信号: 暂无 (分析功能开发中)")
-    
-    click.echo("\n⚠️  注意: 分析功能正在开发中，当前显示的是模拟数据")
+    try:
+        # 导入必要模块
+        from app.data.fetcher import get_fetcher, DataFetchError
+        from app.analysis.indicators import analyze_stock_technical
+        import json
+        
+        # 获取数据
+        fetcher = get_fetcher(use_mock=mock)
+        
+        click.echo("⏳ 获取历史数据...")
+        
+        # 确定数据周期
+        period_map = {
+            5: "5d", 10: "10d", 20: "1mo", 30: "1mo", 
+            60: "2mo", 90: "3mo", 180: "6mo", 365: "1y"
+        }
+        period = period_map.get(days, "1mo")
+        
+        # 获取历史数据
+        hist_data = fetcher.get_historical_data(symbol, period=period)
+        
+        if len(hist_data) < 15:  # RSI至少需要15个数据点
+            click.echo("❌ 历史数据不足，无法进行技术分析")
+            click.echo(f"当前数据点: {len(hist_data)}, 最少需要: 15")
+            return
+        
+        click.echo(f"✅ 获取到 {len(hist_data)} 条历史数据")
+        
+        # 进行技术分析
+        click.echo("⏳ 计算技术指标...")
+        
+        analysis_result = analyze_stock_technical(hist_data)
+        
+        # 根据输出格式显示结果
+        if output_format == 'json':
+            click.echo("\n📋 技术分析结果 (JSON格式):")
+            click.echo(json.dumps(analysis_result, indent=2, ensure_ascii=False))
+            
+        elif output_format == 'csv':
+            click.echo("\n📋 技术分析结果 (CSV格式):")
+            # 简化的CSV输出
+            rsi_data = analysis_result['indicators']['rsi_14']
+            ma_data = analysis_result['indicators']['moving_averages']
+            
+            click.echo("指标,数值,状态")
+            click.echo(f"当前价格,{analysis_result['current_price']},--")
+            click.echo(f"RSI(14),{rsi_data['current_rsi']},{rsi_data['status']}")
+            click.echo(f"SMA(20),{ma_data['sma_20']},--")
+            click.echo(f"SMA(50),{ma_data['sma_50']},--")
+            click.echo(f"EMA(12),{ma_data['ema_12']},--")
+            click.echo(f"EMA(26),{ma_data['ema_26']},--")
+            
+        else:  # table格式（默认）
+            click.echo("\n📈 技术分析结果:")
+            click.echo("=" * 60)
+            
+            # 基本信息
+            click.echo(f"股票代码: {analysis_result['symbol']}")
+            click.echo(f"当前价格: ${analysis_result['current_price']}")
+            click.echo(f"分析时间: {analysis_result['analysis_date']}")
+            
+            # RSI分析
+            rsi_data = analysis_result['indicators']['rsi_14']
+            click.echo(f"\n📊 RSI (14) 分析:")
+            click.echo(f"  当前RSI: {rsi_data['current_rsi']}")
+            click.echo(f"  状态: {rsi_data['status']}")
+            click.echo(f"  信号: {rsi_data['signal']}")
+            click.echo(f"  超卖线: {rsi_data['oversold_level']}")
+            click.echo(f"  超买线: {rsi_data['overbought_level']}")
+            
+            if rsi_data['statistics']['min'] is not None:
+                stats = rsi_data['statistics']
+                click.echo(f"  统计信息: 最小={stats['min']}, 最大={stats['max']}, 平均={stats['mean']}")
+            
+            # 移动平均线
+            ma_data = analysis_result['indicators']['moving_averages']
+            click.echo(f"\n📈 移动平均线:")
+            click.echo(f"  SMA(20): ${ma_data['sma_20']}")
+            click.echo(f"  SMA(50): ${ma_data['sma_50']}")
+            click.echo(f"  EMA(12): ${ma_data['ema_12']}")
+            click.echo(f"  EMA(26): ${ma_data['ema_26']}")
+            
+            # 价格位置分析
+            pos_data = analysis_result['price_position']
+            click.echo(f"\n📍 价格位置分析:")
+            click.echo(f"  相对SMA(20): {pos_data['vs_sma_20']}")
+            click.echo(f"  相对SMA(50): {pos_data['vs_sma_50']}")
+            click.echo(f"  相对EMA(12): {pos_data['vs_ema_12']}")
+            
+            # 交易建议
+            click.echo(f"\n💡 交易建议:")
+            if rsi_data['signal'] != "无信号":
+                if rsi_data['signal'] == "买入信号":
+                    click.echo("  🟢 RSI显示超卖，可能是买入机会")
+                elif rsi_data['signal'] == "卖出信号":
+                    click.echo("  🔴 RSI显示超买，可能是卖出机会")
+            else:
+                click.echo("  ⚪ RSI处于正常范围，无明显信号")
+            
+            # 趋势分析
+            above_count = sum(1 for v in pos_data.values() if v == "above")
+            if above_count >= 2:
+                click.echo("  📈 价格在多数均线上方，趋势偏多头")
+            elif above_count <= 1:
+                click.echo("  📉 价格在多数均线下方，趋势偏空头")
+            else:
+                click.echo("  ➡️ 价格在均线附近，趋势不明确")
+        
+        # 记录日志
+        if logger:
+            logger.info(f"技术分析完成: {symbol} (模拟模式: {mock})")
+            
+        click.echo(f"\n✅ 技术分析完成！")
+        
+    except ImportError as e:
+        click.echo(f"❌ 导入分析模块失败: {e}")
+        if logger:
+            logger.error(f"分析模块导入失败: {e}")
+    except DataFetchError as e:
+        click.echo(f"❌ 数据获取失败: {e}")
+        if logger:
+            logger.error(f"数据获取失败: {e}")
+    except Exception as e:
+        click.echo(f"❌ 技术分析失败: {e}", err=True)
+        if logger:
+            logger.error(f"技术分析失败: {e}")
 
 
 @cli.command()
@@ -367,6 +482,82 @@ def test_data(ctx, symbol, days, mock):
         click.echo(f"❌ 数据获取测试失败: {e}", err=True)
         if logger:
             logger.error(f"数据获取测试失败: {e}")
+
+
+@cli.command()
+@click.argument('symbol')
+@click.option('--calls', default=5, help='测试调用次数')
+@click.pass_context
+def test_backup(ctx, symbol, calls):
+    """
+    测试备用数据源切换机制
+    
+    SYMBOL: 股票代码
+    """
+    logger = ctx.obj.get('logger')
+    
+    click.echo(f"🧪 测试备用数据源机制: {symbol.upper()}")
+    click.echo(f"📞 测试调用次数: {calls}")
+    
+    try:
+        # 导入测试模块
+        from app.data.fetcher import create_test_fetcher_with_failing_primary, DataFetchError
+        
+        # 创建会失败的数据获取器
+        fetcher = create_test_fetcher_with_failing_primary()
+        
+        click.echo("\n🔄 开始测试数据源切换...")
+        click.echo("预期：前2次成功，第3次主数据源失败并切换到备用源")
+        
+        for i in range(1, calls + 1):
+            try:
+                click.echo(f"\n--- 第 {i} 次调用 ---")
+                
+                # 获取数据源状态
+                status = fetcher.get_source_status()
+                click.echo(f"当前数据源: {status['current_source']}")
+                click.echo(f"失败次数: {status['source_failures']}")
+                
+                # 尝试获取数据
+                result = fetcher.test_get_current_price(symbol)
+                
+                click.echo(f"✅ 成功获取价格: ${result['current_price']}")
+                click.echo(f"数据来源: {result.get('exchange', '未知')}")
+                
+            except DataFetchError as e:
+                click.echo(f"❌ 获取失败: {e}")
+                
+                # 显示最终状态
+                final_status = fetcher.get_source_status()
+                click.echo(f"最终数据源: {final_status['current_source']}")
+                click.echo(f"失败统计: {final_status['source_failures']}")
+                break
+        
+        # 显示最终测试结果
+        final_status = fetcher.get_source_status()
+        click.echo(f"\n📊 测试完成!")
+        click.echo(f"主数据源: {final_status['primary_source']}")
+        click.echo(f"当前数据源: {final_status['current_source']}")
+        click.echo(f"备用数据源: {final_status['backup_sources']}")
+        click.echo(f"失败统计: {final_status['source_failures']}")
+        
+        # 验证切换是否成功
+        if final_status['current_source'] != final_status['primary_source']:
+            click.echo("✅ 备用数据源切换机制工作正常！")
+        else:
+            click.echo("⚠️ 未发生数据源切换")
+        
+        if logger:
+            logger.info(f"备用数据源测试完成: {symbol}")
+            
+    except ImportError as e:
+        click.echo(f"❌ 导入测试模块失败: {e}")
+        if logger:
+            logger.error(f"测试模块导入失败: {e}")
+    except Exception as e:
+        click.echo(f"❌ 备用数据源测试失败: {e}", err=True)
+        if logger:
+            logger.error(f"备用数据源测试失败: {e}")
 
 
 @cli.command()
