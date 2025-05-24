@@ -194,11 +194,20 @@ def analyze(ctx, symbol, output_format, days, mock):
             click.echo("\n📋 技术分析结果 (CSV格式):")
             # 简化的CSV输出
             rsi_data = analysis_result['indicators']['rsi_14']
+            macd_data = analysis_result['indicators']['macd']
             ma_data = analysis_result['indicators']['moving_averages']
             
             click.echo("指标,数值,状态")
             click.echo(f"当前价格,{analysis_result['current_price']},--")
             click.echo(f"RSI(14),{rsi_data['current_rsi']},{rsi_data['status']}")
+            
+            if 'error' not in macd_data:
+                click.echo(f"MACD线,{macd_data['current_macd']},{macd_data['cross_signal']}")
+                click.echo(f"MACD信号线,{macd_data['current_signal']},{macd_data['position']}")
+                click.echo(f"MACD柱状图,{macd_data['current_histogram']},{macd_data['histogram_trend']}")
+            else:
+                click.echo(f"MACD,错误,{macd_data['error']}")
+            
             click.echo(f"SMA(20),{ma_data['sma_20']},--")
             click.echo(f"SMA(50),{ma_data['sma_50']},--")
             click.echo(f"EMA(12),{ma_data['ema_12']},--")
@@ -226,6 +235,21 @@ def analyze(ctx, symbol, output_format, days, mock):
                 stats = rsi_data['statistics']
                 click.echo(f"  统计信息: 最小={stats['min']}, 最大={stats['max']}, 平均={stats['mean']}")
             
+            # MACD分析
+            macd_data = analysis_result['indicators']['macd']
+            click.echo(f"\n📈 MACD (12,26,9) 分析:")
+            if 'error' not in macd_data:
+                click.echo(f"  MACD线: {macd_data['current_macd']}")
+                click.echo(f"  信号线: {macd_data['current_signal']}")
+                click.echo(f"  柱状图: {macd_data['current_histogram']}")
+                click.echo(f"  交叉信号: {macd_data['cross_signal']}")
+                click.echo(f"  信号类型: {macd_data['signal_type']}")
+                click.echo(f"  零轴穿越: {macd_data['zero_cross']}")
+                click.echo(f"  位置: {macd_data['position']}")
+                click.echo(f"  柱状图趋势: {macd_data['histogram_trend']}")
+            else:
+                click.echo(f"  错误: {macd_data['error']}")
+            
             # 移动平均线
             ma_data = analysis_result['indicators']['moving_averages']
             click.echo(f"\n📈 移动平均线:")
@@ -243,6 +267,8 @@ def analyze(ctx, symbol, output_format, days, mock):
             
             # 交易建议
             click.echo(f"\n💡 交易建议:")
+            
+            # RSI建议
             if rsi_data['signal'] != "无信号":
                 if rsi_data['signal'] == "买入信号":
                     click.echo("  🟢 RSI显示超卖，可能是买入机会")
@@ -250,6 +276,22 @@ def analyze(ctx, symbol, output_format, days, mock):
                     click.echo("  🔴 RSI显示超买，可能是卖出机会")
             else:
                 click.echo("  ⚪ RSI处于正常范围，无明显信号")
+            
+            # MACD建议
+            if 'error' not in macd_data and macd_data['signal_type'] != "无信号":
+                if macd_data['signal_type'] == "买入信号":
+                    click.echo("  🟢 MACD金叉，趋势转多")
+                elif macd_data['signal_type'] == "卖出信号":
+                    click.echo("  🔴 MACD死叉，趋势转空")
+            elif 'error' not in macd_data:
+                click.echo("  ⚪ MACD无明显交叉信号")
+            
+            # 零轴穿越提示
+            if 'error' not in macd_data and macd_data['zero_cross'] != "无":
+                if macd_data['zero_cross'] == "上穿零轴":
+                    click.echo("  📈 MACD上穿零轴，确认多头趋势")
+                elif macd_data['zero_cross'] == "下穿零轴":
+                    click.echo("  📉 MACD下穿零轴，确认空头趋势")
             
             # 趋势分析
             above_count = sum(1 for v in pos_data.values() if v == "above")

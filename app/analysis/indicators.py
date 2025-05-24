@@ -113,6 +113,58 @@ class TechnicalIndicators:
         logger.debug(f"计算EMA指标，周期={period}")
         return prices.ewm(span=period, adjust=False).mean()
     
+    @staticmethod
+    def calculate_macd(prices: pd.Series, 
+                      fast_period: int = 12, 
+                      slow_period: int = 26, 
+                      signal_period: int = 9) -> Tuple[pd.Series, pd.Series, pd.Series]:
+        """
+        计算MACD指标（指数平滑异同移动平均线）
+        
+        MACD = EMA(fast) - EMA(slow)
+        信号线 = EMA(MACD, signal_period)
+        柱状图 = MACD - 信号线
+        
+        Args:
+            prices: 价格序列（通常是收盘价）
+            fast_period: 快速EMA周期，默认12
+            slow_period: 慢速EMA周期，默认26  
+            signal_period: 信号线EMA周期，默认9
+            
+        Returns:
+            (MACD线, 信号线, 柱状图) 的元组
+            
+        Raises:
+            ValueError: 输入数据无效
+        """
+        if len(prices) < slow_period + signal_period:
+            raise ValueError(f"数据长度不足，至少需要{slow_period + signal_period}个数据点")
+        
+        if fast_period <= 0 or slow_period <= 0 or signal_period <= 0:
+            raise ValueError("所有周期必须大于0")
+            
+        if fast_period >= slow_period:
+            raise ValueError("快速周期必须小于慢速周期")
+        
+        logger.debug(f"计算MACD指标，参数: fast={fast_period}, slow={slow_period}, signal={signal_period}")
+        
+        # 计算快速和慢速EMA
+        ema_fast = TechnicalIndicators.calculate_ema(prices, fast_period)
+        ema_slow = TechnicalIndicators.calculate_ema(prices, slow_period)
+        
+        # 计算MACD线
+        macd_line = ema_fast - ema_slow
+        
+        # 计算信号线（MACD的9周期EMA）
+        signal_line = TechnicalIndicators.calculate_ema(macd_line, signal_period)
+        
+        # 计算柱状图（MACD - 信号线）
+        histogram = macd_line - signal_line
+        
+        logger.info(f"MACD计算完成，MACD范围: {macd_line.min():.4f} - {macd_line.max():.4f}")
+        
+        return macd_line, signal_line, histogram
+    
     def analyze_rsi_signals(self, rsi: pd.Series, 
                            oversold_level: float = 30, 
                            overbought_level: float = 70) -> Dict[str, Any]:
@@ -168,6 +220,124 @@ class TechnicalIndicators:
         
         return analysis
     
+    def analyze_macd_signals(self, macd_line: pd.Series, 
+                           signal_line: pd.Series, 
+                           histogram: pd.Series) -> Dict[str, Any]:
+        """
+        分析MACD信号
+        
+        Args:
+            macd_line: MACD线
+            signal_line: 信号线
+            histogram: 柱状图
+            
+        Returns:
+            MACD分析结果
+        """
+        if len(macd_line) == 0 or len(signal_line) == 0 or len(histogram) == 0:
+            return {"error": "MACD数据为空"}
+        
+        current_macd = macd_line.iloc[-1]
+        current_signal = signal_line.iloc[-1]
+        current_histogram = histogram.iloc[-1]
+        
+        # 检查数据有效性
+        if pd.isna(current_macd) or pd.isna(current_signal) or pd.isna(current_histogram):
+            return {
+                "error": "MACD数据不足",
+                "current_macd": None,
+                "current_signal": None,
+                "current_histogram": None
+            }
+        
+        # 判断MACD信号
+        # 1. 金叉/死叉
+        if len(macd_line) >= 2 and len(signal_line) >= 2:
+            prev_macd = macd_line.iloc[-2]
+            prev_signal = signal_line.iloc[-2]
+            
+            # 金叉：MACD上穿信号线
+            if prev_macd <= prev_signal and current_macd > current_signal:
+                cross_signal = "金叉"
+                signal_type = "买入信号"
+            # 死叉：MACD下穿信号线
+            elif prev_macd >= prev_signal and current_macd < current_signal:
+                cross_signal = "死叉"
+                signal_type = "卖出信号"
+            else:
+                cross_signal = "无交叉"
+                signal_type = "无信号"
+        else:
+            cross_signal = "数据不足"
+            signal_type = "无信号"
+        
+        # 2. 零轴穿越
+        zero_cross = "无"
+        if len(macd_line) >= 2:
+            prev_macd = macd_line.iloc[-2]
+            if prev_macd <= 0 and current_macd > 0:
+                zero_cross = "上穿零轴"
+            elif prev_macd >= 0 and current_macd < 0:
+                zero_cross = "下穿零轴"
+        
+        # 3. 背离检测（简化版）
+        # 检查最近5期的趋势
+        if len(histogram) >= 5:
+            recent_hist = histogram.tail(5)
+            hist_trend = "上升" if recent_hist.iloc[-1] > recent_hist.iloc[0] else "下降"
+        else:
+            hist_trend = "未知"
+        
+        # 4. MACD位置分析
+        if current_macd > 0 and current_signal > 0:
+            position = "多头区域"
+        elif current_macd < 0 and current_signal < 0:
+            position = "空头区域"
+        else:
+            position = "过渡区域"
+        
+        # 计算统计信息
+        macd_valid = macd_line.dropna()
+        signal_valid = signal_line.dropna()
+        hist_valid = histogram.dropna()
+        
+        analysis = {
+            "current_macd": round(current_macd, 4),
+            "current_signal": round(current_signal, 4),
+            "current_histogram": round(current_histogram, 4),
+            "cross_signal": cross_signal,
+            "signal_type": signal_type,
+            "zero_cross": zero_cross,
+            "position": position,
+            "histogram_trend": hist_trend,
+            "statistics": {
+                "macd": {
+                    "min": round(macd_valid.min(), 4) if len(macd_valid) > 0 else None,
+                    "max": round(macd_valid.max(), 4) if len(macd_valid) > 0 else None,
+                    "mean": round(macd_valid.mean(), 4) if len(macd_valid) > 0 else None
+                },
+                "signal": {
+                    "min": round(signal_valid.min(), 4) if len(signal_valid) > 0 else None,
+                    "max": round(signal_valid.max(), 4) if len(signal_valid) > 0 else None,
+                    "mean": round(signal_valid.mean(), 4) if len(signal_valid) > 0 else None
+                },
+                "histogram": {
+                    "min": round(hist_valid.min(), 4) if len(hist_valid) > 0 else None,
+                    "max": round(hist_valid.max(), 4) if len(hist_valid) > 0 else None,
+                    "mean": round(hist_valid.mean(), 4) if len(hist_valid) > 0 else None
+                }
+            },
+            "recent_values": {
+                "macd": [round(x, 4) for x in macd_line.tail(3).tolist() if not pd.isna(x)],
+                "signal": [round(x, 4) for x in signal_line.tail(3).tolist() if not pd.isna(x)],
+                "histogram": [round(x, 4) for x in histogram.tail(3).tolist() if not pd.isna(x)]
+            }
+        }
+        
+        logger.info(f"MACD分析完成: {cross_signal}, {position} (MACD={current_macd:.4f})")
+        
+        return analysis
+    
     def get_technical_summary(self, df: pd.DataFrame, 
                             price_column: str = 'Close') -> Dict[str, Any]:
         """
@@ -192,6 +362,9 @@ class TechnicalIndicators:
         ema_12 = self.calculate_ema(prices, 12)
         ema_26 = self.calculate_ema(prices, 26)
         
+        # 计算MACD指标
+        macd_line, signal_line, histogram = self.calculate_macd(prices, 12, 26, 9)
+        
         current_price = prices.iloc[-1]
         
         summary = {
@@ -200,6 +373,7 @@ class TechnicalIndicators:
             "analysis_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "indicators": {
                 "rsi_14": self.analyze_rsi_signals(rsi_14),
+                "macd": self.analyze_macd_signals(macd_line, signal_line, histogram),
                 "moving_averages": {
                     "sma_20": round(sma_20.iloc[-1], 2) if not pd.isna(sma_20.iloc[-1]) else None,
                     "sma_50": round(sma_50.iloc[-1], 2) if not pd.isna(sma_50.iloc[-1]) else None,
@@ -235,6 +409,28 @@ def calculate_rsi(prices: Union[pd.Series, list], period: int = 14) -> pd.Series
         prices = pd.Series(prices)
     
     return TechnicalIndicators.calculate_rsi(prices, period)
+
+
+def calculate_macd(prices: Union[pd.Series, list], 
+                  fast_period: int = 12, 
+                  slow_period: int = 26, 
+                  signal_period: int = 9) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    """
+    计算MACD指标的便捷函数
+    
+    Args:
+        prices: 价格序列
+        fast_period: 快速周期，默认12
+        slow_period: 慢速周期，默认26
+        signal_period: 信号周期，默认9
+        
+    Returns:
+        (MACD线, 信号线, 柱状图) 的元组
+    """
+    if isinstance(prices, list):
+        prices = pd.Series(prices)
+    
+    return TechnicalIndicators.calculate_macd(prices, fast_period, slow_period, signal_period)
 
 
 def analyze_stock_technical(df: pd.DataFrame, price_column: str = 'Close') -> Dict[str, Any]:

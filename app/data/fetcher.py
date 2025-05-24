@@ -710,9 +710,9 @@ class MockDataFetcher(StockDataFetcher):
             # 解析期间
             days_map = {
                 '1d': 1, '2d': 2, '5d': 5, '10d': 10,
-                '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365
+                '1mo': 35, '2mo': 50, '3mo': 75, '6mo': 130, '1y': 260  # 增加数据点
             }
-            days = days_map.get(period, 30)
+            days = days_map.get(period, 35)
             
             # 生成日期范围
             end_date = datetime.now()
@@ -731,9 +731,7 @@ class MockDataFetcher(StockDataFetcher):
             current_price = base_price
             
             for date in date_range:
-                # 只保留工作日
-                if date.weekday() >= 5:  # 周六日跳过
-                    continue
+                # 保留所有日期，包括周末（为了确保有足够数据点用于技术分析）
                 
                 # 随机日间波动
                 daily_change = random.gauss(0, 0.02)  # 2%标准差
