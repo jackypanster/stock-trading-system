@@ -196,6 +196,7 @@ def analyze(ctx, symbol, output_format, days, mock):
             rsi_data = analysis_result['indicators']['rsi_14']
             macd_data = analysis_result['indicators']['macd']
             ma_data = analysis_result['indicators']['moving_averages']
+            atr_data = analysis_result['indicators']['atr']
             
             click.echo("指标,数值,状态")
             click.echo(f"当前价格,{analysis_result['current_price']},--")
@@ -207,6 +208,12 @@ def analyze(ctx, symbol, output_format, days, mock):
                 click.echo(f"MACD柱状图,{macd_data['current_histogram']},{macd_data['histogram_trend']}")
             else:
                 click.echo(f"MACD,错误,{macd_data['error']}")
+            
+            if 'error' not in atr_data:
+                click.echo(f"ATR(14),{atr_data['current_atr']},{atr_data['volatility_level']}")
+                click.echo(f"ATR百分比,{atr_data['atr_percentage']}%,{atr_data['volatility_signal']}")
+            else:
+                click.echo(f"ATR,错误,{atr_data['error']}")
             
             click.echo(f"SMA(20),{ma_data['sma_20']},--")
             click.echo(f"SMA(50),{ma_data['sma_50']},--")
@@ -250,6 +257,30 @@ def analyze(ctx, symbol, output_format, days, mock):
             else:
                 click.echo(f"  错误: {macd_data['error']}")
             
+            # ATR分析
+            atr_data = analysis_result['indicators']['atr']
+            click.echo(f"\n📊 ATR (14) 波动率分析:")
+            if 'error' not in atr_data:
+                click.echo(f"  当前ATR: {atr_data['current_atr']}")
+                click.echo(f"  ATR百分比: {atr_data['atr_percentage']}%")
+                click.echo(f"  波动率水平: {atr_data['volatility_level']}")
+                click.echo(f"  波动率信号: {atr_data['volatility_signal']}")
+                click.echo(f"  ATR趋势: {atr_data['atr_trend']}")
+                if atr_data['atr_change_5d'] != 0:
+                    click.echo(f"  5日变化: {atr_data['atr_change_5d']:+.2f}%")
+                
+                # 显示建议止损位
+                click.echo(f"  建议止损位:")
+                for level, data in atr_data['stop_loss_levels'].items():
+                    multiplier = level.replace('atr_', '').replace('x', '')
+                    click.echo(f"    {multiplier}倍ATR: 多头止损${data['long_stop']}, 空头止损${data['short_stop']}")
+                
+                if atr_data['statistics']['min'] is not None:
+                    stats = atr_data['statistics']
+                    click.echo(f"  统计信息: 最小={stats['min']}, 最大={stats['max']}, 平均={stats['mean']}")
+            else:
+                click.echo(f"  错误: {atr_data['error']}")
+            
             # 移动平均线
             ma_data = analysis_result['indicators']['moving_averages']
             click.echo(f"\n📈 移动平均线:")
@@ -292,6 +323,19 @@ def analyze(ctx, symbol, output_format, days, mock):
                     click.echo("  📈 MACD上穿零轴，确认多头趋势")
                 elif macd_data['zero_cross'] == "下穿零轴":
                     click.echo("  📉 MACD下穿零轴，确认空头趋势")
+            
+            # ATR波动率建议
+            if 'error' not in atr_data:
+                if atr_data['volatility_level'] == "高波动":
+                    click.echo("  ⚠️ 当前处于高波动期，建议谨慎交易，适当减小仓位")
+                elif atr_data['volatility_level'] == "低波动":
+                    click.echo("  🔄 当前处于低波动期，可能即将出现突破，密切关注")
+                else:
+                    click.echo("  ✅ 波动率正常，适合正常交易策略")
+                
+                # ATR止损建议
+                best_stop = atr_data['stop_loss_levels']['atr_2.0x']
+                click.echo(f"  🛡️ 建议止损位: 多头${best_stop['long_stop']}, 空头${best_stop['short_stop']} (2倍ATR)")
             
             # 趋势分析
             above_count = sum(1 for v in pos_data.values() if v == "above")

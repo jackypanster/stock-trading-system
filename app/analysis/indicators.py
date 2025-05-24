@@ -165,6 +165,68 @@ class TechnicalIndicators:
         
         return macd_line, signal_line, histogram
     
+    @staticmethod
+    def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+        """
+        计算平均真实范围(ATR)指标
+        
+        真实范围(TR) = max(High-Low, |High-PrevClose|, |Low-PrevClose|)
+        ATR = TR的period期移动平均
+        
+        Args:
+            df: 包含OHLC数据的DataFrame，需要包含High、Low、Close列
+            period: 计算周期，默认14
+            
+        Returns:
+            ATR值序列
+            
+        Raises:
+            ValueError: 输入数据无效
+        """
+        required_columns = ['High', 'Low', 'Close']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise ValueError(f"缺少必要的数据列: {missing_columns}")
+        
+        if len(df) < period + 1:
+            raise ValueError(f"数据长度不足，至少需要{period + 1}个数据点")
+        
+        if period <= 0:
+            raise ValueError("周期必须大于0")
+        
+        logger.debug(f"计算ATR指标，周期={period}，数据点={len(df)}")
+        
+        high = df['High']
+        low = df['Low']
+        close = df['Close']
+        
+        # 计算前一日收盘价
+        prev_close = close.shift(1)
+        
+        # 计算三种可能的范围
+        range1 = high - low  # 当日高低价差
+        range2 = (high - prev_close).abs()  # 当日高价与前收盘价差
+        range3 = (low - prev_close).abs()   # 当日低价与前收盘价差
+        
+        # 真实范围 = 三者最大值
+        true_range = pd.DataFrame({
+            'range1': range1,
+            'range2': range2, 
+            'range3': range3
+        }).max(axis=1)
+        
+        # ATR = 真实范围的移动平均
+        # 使用Wilder's smoothing方法（与RSI相同的平滑方法）
+        atr = true_range.rolling(window=period, min_periods=period).mean()
+        
+        # 对于第一个ATR值之后的值，使用Wilder's smoothing
+        for i in range(period, len(true_range)):
+            atr.iloc[i] = (atr.iloc[i-1] * (period - 1) + true_range.iloc[i]) / period
+        
+        logger.info(f"ATR计算完成，有效值范围: {atr.min():.4f} - {atr.max():.4f}")
+        
+        return atr
+    
     def analyze_rsi_signals(self, rsi: pd.Series, 
                            oversold_level: float = 30, 
                            overbought_level: float = 70) -> Dict[str, Any]:
@@ -338,6 +400,107 @@ class TechnicalIndicators:
         
         return analysis
     
+    def analyze_atr_signals(self, atr: pd.Series, prices: pd.Series) -> Dict[str, Any]:
+        """
+        分析ATR信号和波动率状态
+        
+        Args:
+            atr: ATR序列
+            prices: 价格序列（通常是收盘价）
+            
+        Returns:
+            ATR分析结果
+        """
+        if len(atr) == 0 or len(prices) == 0:
+            return {"error": "ATR或价格数据为空"}
+        
+        current_atr = atr.iloc[-1]
+        current_price = prices.iloc[-1]
+        
+        if pd.isna(current_atr) or pd.isna(current_price):
+            return {
+                "error": "ATR数据不足",
+                "current_atr": None,
+                "current_price": None
+            }
+        
+        # 计算ATR相对价格的百分比
+        atr_percentage = (current_atr / current_price) * 100
+        
+        # 判断波动率水平
+        if len(atr) >= 20:
+            atr_mean = atr.tail(20).mean()
+            atr_std = atr.tail(20).std()
+            
+            # 基于标准差判断波动率水平
+            if current_atr > atr_mean + atr_std:
+                volatility_level = "高波动"
+                volatility_signal = "谨慎交易"
+            elif current_atr < atr_mean - atr_std:
+                volatility_level = "低波动"
+                volatility_signal = "可能突破"
+            else:
+                volatility_level = "正常波动"
+                volatility_signal = "正常交易"
+        else:
+            # 数据点不够，使用简化判断
+            recent_atr = atr.tail(min(len(atr), 5))
+            if len(recent_atr) > 1:
+                atr_trend = "上升" if recent_atr.iloc[-1] > recent_atr.iloc[0] else "下降"
+            else:
+                atr_trend = "未知"
+            
+            volatility_level = "正常波动"
+            volatility_signal = "正常交易"
+            atr_mean = atr.mean()
+            atr_std = atr.std()
+        
+        # 计算建议的止损距离（基于ATR倍数）
+        stop_loss_multipliers = [1.5, 2.0, 2.5]
+        stop_loss_levels = {}
+        
+        for multiplier in stop_loss_multipliers:
+            stop_distance = current_atr * multiplier
+            stop_loss_levels[f"atr_{multiplier}x"] = {
+                "long_stop": round(current_price - stop_distance, 2),
+                "short_stop": round(current_price + stop_distance, 2),
+                "distance": round(stop_distance, 2)
+            }
+        
+        # 计算统计信息
+        atr_valid = atr.dropna()
+        
+        # ATR趋势分析
+        if len(atr_valid) >= 5:
+            recent_atr = atr_valid.tail(5)
+            atr_trend = "上升" if recent_atr.iloc[-1] > recent_atr.iloc[0] else "下降"
+            atr_change = ((recent_atr.iloc[-1] - recent_atr.iloc[0]) / recent_atr.iloc[0]) * 100
+        else:
+            atr_trend = "未知"
+            atr_change = 0
+        
+        analysis = {
+            "current_atr": round(current_atr, 4),
+            "current_price": round(current_price, 2),
+            "atr_percentage": round(atr_percentage, 2),
+            "volatility_level": volatility_level,
+            "volatility_signal": volatility_signal,
+            "atr_trend": atr_trend,
+            "atr_change_5d": round(atr_change, 2),
+            "stop_loss_levels": stop_loss_levels,
+            "statistics": {
+                "min": round(atr_valid.min(), 4) if len(atr_valid) > 0 else None,
+                "max": round(atr_valid.max(), 4) if len(atr_valid) > 0 else None,
+                "mean": round(atr_mean, 4) if not pd.isna(atr_mean) else None,
+                "std": round(atr_std, 4) if not pd.isna(atr_std) else None
+            },
+            "recent_values": [round(x, 4) for x in atr.tail(5).tolist() if not pd.isna(x)]
+        }
+        
+        logger.info(f"ATR分析完成: {volatility_level} (ATR={current_atr:.4f}, {atr_percentage:.2f}%)")
+        
+        return analysis
+    
     def get_technical_summary(self, df: pd.DataFrame, 
                             price_column: str = 'Close') -> Dict[str, Any]:
         """
@@ -365,6 +528,9 @@ class TechnicalIndicators:
         # 计算MACD指标
         macd_line, signal_line, histogram = self.calculate_macd(prices, 12, 26, 9)
         
+        # 计算ATR指标
+        atr = self.calculate_atr(df, 14)
+        
         current_price = prices.iloc[-1]
         
         summary = {
@@ -379,7 +545,8 @@ class TechnicalIndicators:
                     "sma_50": round(sma_50.iloc[-1], 2) if not pd.isna(sma_50.iloc[-1]) else None,
                     "ema_12": round(ema_12.iloc[-1], 2) if not pd.isna(ema_12.iloc[-1]) else None,
                     "ema_26": round(ema_26.iloc[-1], 2) if not pd.isna(ema_26.iloc[-1]) else None,
-                }
+                },
+                "atr": self.analyze_atr_signals(atr, prices)
             },
             "price_position": {
                 "vs_sma_20": "above" if current_price > sma_20.iloc[-1] else "below" if not pd.isna(sma_20.iloc[-1]) else "unknown",
@@ -433,16 +600,30 @@ def calculate_macd(prices: Union[pd.Series, list],
     return TechnicalIndicators.calculate_macd(prices, fast_period, slow_period, signal_period)
 
 
+def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """
+    计算ATR指标的便捷函数
+    
+    Args:
+        df: 包含OHLC数据的DataFrame
+        period: 计算周期，默认14
+        
+    Returns:
+        ATR值序列
+    """
+    return TechnicalIndicators.calculate_atr(df, period)
+
+
 def analyze_stock_technical(df: pd.DataFrame, price_column: str = 'Close') -> Dict[str, Any]:
     """
     分析股票技术指标的便捷函数
     
     Args:
-        df: 股票数据DataFrame
+        df: 股票数据DataFrame，需要包含OHLC数据
         price_column: 价格列名
         
     Returns:
-        技术分析结果
+        技术分析结果，包含RSI、MACD、ATR和移动平均线分析
     """
     indicators = TechnicalIndicators()
     return indicators.get_technical_summary(df, price_column) 
