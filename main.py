@@ -24,6 +24,7 @@ import click
 import yaml
 from datetime import datetime
 import logging
+import json
 
 # 版本信息
 __version__ = "1.0.0"
@@ -31,6 +32,17 @@ __author__ = "Trading Assistant Team"
 
 # 全局配置
 CONFIG = None
+
+# 自定义JSON编码器，处理Timestamp等不可序列化对象
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if hasattr(obj, 'strftime'):  # 处理日期时间对象
+            return obj.strftime('%Y-%m-%d %H:%M:%S')
+        if hasattr(obj, 'item'):  # 处理numpy类型
+            return obj.item()
+        if hasattr(obj, 'tolist'):  # 处理numpy数组
+            return obj.tolist()
+        return super().default(obj)
 
 
 def load_config():
@@ -156,7 +168,6 @@ def analyze(ctx, symbol, output_format, days, mock):
         # 导入必要模块
         from app.data.fetcher import get_fetcher, DataFetchError
         from app.analysis.indicators import analyze_stock_technical
-        import json
         
         # 获取数据
         fetcher = get_fetcher(use_mock=mock)
@@ -188,7 +199,7 @@ def analyze(ctx, symbol, output_format, days, mock):
         # 根据输出格式显示结果
         if output_format == 'json':
             click.echo("\n📋 技术分析结果 (JSON格式):")
-            click.echo(json.dumps(analysis_result, indent=2, ensure_ascii=False))
+            click.echo(json.dumps(analysis_result, indent=2, ensure_ascii=False, cls=CustomJSONEncoder))
             
         elif output_format == 'csv':
             click.echo("\n📋 技术分析结果 (CSV格式):")
