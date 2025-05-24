@@ -220,6 +220,32 @@ def analyze(ctx, symbol, output_format, days, mock):
             click.echo(f"EMA(12),{ma_data['ema_12']},--")
             click.echo(f"EMA(26),{ma_data['ema_26']},--")
             
+            # 添加支撑阻力位信息
+            if 'support_resistance' in analysis_result:
+                sr_data = analysis_result['support_resistance']
+                summary = sr_data.get('summary', {})
+                click.echo(f"识别高点,{summary.get('identified_highs', 0)},个")
+                click.echo(f"识别低点,{summary.get('identified_lows', 0)},个")
+                click.echo(f"支撑位数量,{summary.get('support_levels', 0)},个")
+                click.echo(f"阻力位数量,{summary.get('resistance_levels', 0)},个")
+                
+                # 显示最强的支撑阻力位
+                sr_levels = sr_data.get('support_resistance', {})
+                resistance_levels = sr_levels.get('resistance_levels', [])
+                if resistance_levels:
+                    top_resistance = resistance_levels[0]
+                    click.echo(f"主要阻力位,${top_resistance['price']},{top_resistance['strength_rating']}")
+                
+                support_levels = sr_levels.get('support_levels', [])
+                if support_levels:
+                    top_support = support_levels[0]
+                    click.echo(f"主要支撑位,${top_support['price']},{top_support['strength_rating']}")
+                
+                # 当前位置
+                current_pos = sr_levels.get('current_position')
+                if current_pos:
+                    click.echo(f"当前位置,{current_pos['position_description']},--")
+            
         else:  # table格式（默认）
             click.echo("\n📈 技术分析结果:")
             click.echo("=" * 60)
@@ -288,6 +314,67 @@ def analyze(ctx, symbol, output_format, days, mock):
             click.echo(f"  SMA(50): ${ma_data['sma_50']}")
             click.echo(f"  EMA(12): ${ma_data['ema_12']}")
             click.echo(f"  EMA(26): ${ma_data['ema_26']}")
+            
+            # 支撑阻力位分析
+            if 'support_resistance' in analysis_result:
+                sr_data = analysis_result['support_resistance']
+                click.echo(f"\n🎯 支撑阻力位分析:")
+                
+                # 显示分析概要
+                summary = sr_data.get('summary', {})
+                click.echo(f"  识别高点: {summary.get('identified_highs', 0)}")
+                click.echo(f"  识别低点: {summary.get('identified_lows', 0)}")
+                click.echo(f"  支撑位: {summary.get('support_levels', 0)}")
+                click.echo(f"  阻力位: {summary.get('resistance_levels', 0)}")
+                
+                # 显示关键支撑阻力位
+                sr_levels = sr_data.get('support_resistance', {})
+                
+                # 显示主要阻力位
+                resistance_levels = sr_levels.get('resistance_levels', [])
+                if resistance_levels:
+                    click.echo(f"  主要阻力位:")
+                    for i, level in enumerate(resistance_levels[:3]):  # 显示前3个
+                        strength = level['strength_rating']
+                        touch_count = level['touch_count']
+                        click.echo(f"    ${level['price']} (触及{touch_count}次, 强度:{strength})")
+                
+                # 显示主要支撑位
+                support_levels = sr_levels.get('support_levels', [])
+                if support_levels:
+                    click.echo(f"  主要支撑位:")
+                    for i, level in enumerate(support_levels[:3]):  # 显示前3个
+                        strength = level['strength_rating']
+                        touch_count = level['touch_count']
+                        click.echo(f"    ${level['price']} (触及{touch_count}次, 强度:{strength})")
+                
+                # 显示当前位置分析
+                current_pos = sr_levels.get('current_position')
+                if current_pos:
+                    click.echo(f"  当前位置: {current_pos['position_description']}")
+                    
+                    # 显示距离信息
+                    if current_pos.get('resistance_distance'):
+                        res_dist = current_pos['resistance_distance']
+                        click.echo(f"  距离上方阻力位: ${res_dist['price_diff']} ({res_dist['percentage']:+.1f}%)")
+                    
+                    if current_pos.get('support_distance'):
+                        sup_dist = current_pos['support_distance']
+                        click.echo(f"  距离下方支撑位: ${sup_dist['price_diff']} ({sup_dist['percentage']:+.1f}%)")
+                
+                # 显示交易信号
+                trading_signals = sr_data.get('trading_signals', {})
+                if trading_signals.get('signals'):
+                    click.echo(f"  📡 支撑阻力位信号:")
+                    for signal in trading_signals['signals']:
+                        signal_type = signal['type']
+                        if signal_type == 'warning':
+                            emoji = "⚠️"
+                        elif signal_type == 'opportunity':
+                            emoji = "💡"
+                        else:
+                            emoji = "📊"
+                        click.echo(f"    {emoji} {signal['signal']}: {signal['description']}")
             
             # 价格位置分析
             pos_data = analysis_result['price_position']

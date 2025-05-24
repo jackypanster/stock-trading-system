@@ -531,6 +531,15 @@ class TechnicalIndicators:
         # 计算ATR指标
         atr = self.calculate_atr(df, 14)
         
+        # 计算支撑阻力位分析
+        try:
+            from .support_resistance import SupportResistanceAnalyzer
+            sr_analyzer = SupportResistanceAnalyzer()
+            support_resistance = sr_analyzer.analyze_price_action(df, price_column, window=5, min_change_pct=1.0, tolerance=0.5)
+        except Exception as e:
+            logger.warning(f"支撑阻力位分析失败: {e}")
+            support_resistance = None
+        
         current_price = prices.iloc[-1]
         
         summary = {
@@ -540,13 +549,13 @@ class TechnicalIndicators:
             "indicators": {
                 "rsi_14": self.analyze_rsi_signals(rsi_14),
                 "macd": self.analyze_macd_signals(macd_line, signal_line, histogram),
+                "atr": self.analyze_atr_signals(atr, prices),
                 "moving_averages": {
                     "sma_20": round(sma_20.iloc[-1], 2) if not pd.isna(sma_20.iloc[-1]) else None,
                     "sma_50": round(sma_50.iloc[-1], 2) if not pd.isna(sma_50.iloc[-1]) else None,
                     "ema_12": round(ema_12.iloc[-1], 2) if not pd.isna(ema_12.iloc[-1]) else None,
                     "ema_26": round(ema_26.iloc[-1], 2) if not pd.isna(ema_26.iloc[-1]) else None,
-                },
-                "atr": self.analyze_atr_signals(atr, prices)
+                }
             },
             "price_position": {
                 "vs_sma_20": "above" if current_price > sma_20.iloc[-1] else "below" if not pd.isna(sma_20.iloc[-1]) else "unknown",
@@ -554,6 +563,10 @@ class TechnicalIndicators:
                 "vs_ema_12": "above" if current_price > ema_12.iloc[-1] else "below" if not pd.isna(ema_12.iloc[-1]) else "unknown",
             }
         }
+        
+        # 添加支撑阻力位分析
+        if support_resistance:
+            summary["support_resistance"] = support_resistance
         
         logger.info(f"技术分析摘要生成完成: {summary['symbol']}")
         
