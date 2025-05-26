@@ -1,4 +1,0 @@
-
-2025-05-26 15:51:48,541 - __main__ - [31mERROR[0m - 分析失败: [Errno 32] Broken pipe
-2025-05-26 19:28:04,494 - data.fetcher - [31mERROR[0m - 获取 TSLA 历史数据失败: Too Many Requests. Rate limited. Try after a while.
-2025-05-26 19:28:04,496 - __main__ - [31mERROR[0m - 数据获取失败: 获取 TSLA 历史数据失败: Too Many Requests. Rate limited. Try after a while.
