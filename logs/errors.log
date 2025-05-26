@@ -10,3 +10,7 @@
 2025-05-24 13:16:32,554 - __main__ - [31mERROR[0m - 技术分析失败: 数据长度不足，至少需要35个数据点
 2025-05-24 13:17:08,971 - __main__ - [31mERROR[0m - 技术分析失败: 数据长度不足，至少需要35个数据点
 2025-05-24 13:43:17,662 - __main__ - [31mERROR[0m - 技术分析失败: Object of type Timestamp is not JSON serializable
+2025-05-26 14:53:06,119 - __main__ - [31mERROR[0m - 分析失败: 'str' object has no attribute 'action'
+2025-05-26 14:53:58,960 - __main__ - [31mERROR[0m - 分析失败: Object of type RiskMetrics is not JSON serializable
+2025-05-26 15:44:16,894 - __main__ - [31mERROR[0m - 分析失败: [Errno 32] Broken pipe
+2025-05-26 15:44:28,229 - __main__ - [31mERROR[0m - 信号获取失败: [Errno 32] Broken pipe
