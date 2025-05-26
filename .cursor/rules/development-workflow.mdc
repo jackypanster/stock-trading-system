@@ -1,5 +1,139 @@
----
-description:
-globs:
-alwaysApply: false
----
+# 开发工作流和测试指南
+
+## 开发环境设置
+
+### 虚拟环境
+- 必须使用虚拟环境：`python -m venv venv`
+- 激活环境：`source venv/bin/activate` (macOS/Linux) 或 `venv\Scripts\activate` (Windows)
+- 确认环境：命令提示符显示`(venv)`
+- 依赖安装：`pip install -r requirements.txt`
+
+### 环境要求
+- Python 3.7+ (当前使用3.7.16)
+- 核心依赖：pandas==1.3.5, numpy==1.21.6, click, PyYAML, python-dotenv
+- 开发依赖：pytest, pytest-cov
+
+## 开发流程
+
+### 任务开发流程
+1. 查看[docs/development-roadmap.md](mdc:docs/development-roadmap.md)确认当前任务
+2. 创建功能分支：`git checkout -b feature/task-name`
+3. 实现功能代码
+4. 编写单元测试
+5. 运行测试验证
+6. 更新文档
+7. 提交代码：`git commit -m "实现XXX功能"`
+
+### 代码提交规范
+- 提交信息使用中文
+- 格式：`动词 + 功能描述`
+- 示例：`实现RSI指标计算功能`、`修复数据缓存bug`、`添加信号过滤机制`
+
+## 测试策略
+
+### 测试文件命名
+- 单元测试：`test_[模块名].py`
+- 集成测试：`test_[功能名]_integration.py`
+- 任务验收测试：`test_t[任务编号]_[功能名].py`
+
+### 测试运行
+```bash
+# 运行所有测试
+python -m pytest
+
+# 运行特定测试文件
+python test_t422_simple.py
+
+# 运行带覆盖率的测试
+pytest --cov=app
+
+# 运行特定模块测试
+python -m pytest tests/test_indicators.py -v
+```
+
+### 测试覆盖要求
+- 核心功能模块：80%以上覆盖率
+- 技术指标计算：90%以上覆盖率
+- 信号生成逻辑：85%以上覆盖率
+- 数据获取模块：75%以上覆盖率
+
+## 任务验收标准
+
+### 当前阶段任务 (阶段4已完成)
+- ✅ T4.1.1: 支撑阻力策略基类
+- ✅ T4.1.2: 买入信号生成
+- ✅ T4.1.3: 卖出信号生成
+- ✅ T4.2.1: 置信度计算
+- ✅ T4.2.2: 信号过滤机制
+
+### 下一阶段任务 (阶段5: 风险控制模块)
+- ⏳ T5.1.1: 实现止损止盈计算
+- ⏳ T5.1.2: 实现仓位大小计算
+- ⏳ T5.2.1: 实现总仓位控制
+
+### 验收流程
+1. 功能实现完成
+2. 单元测试通过
+3. 集成测试通过
+4. 文档更新完成
+5. 代码审查通过
+6. 更新[docs/development-roadmap.md](mdc:docs/development-roadmap.md)进度
+
+## 调试和故障排除
+
+### 常用调试命令
+```bash
+# 检查系统状态
+python main.py status
+
+# 测试数据获取
+python main.py test-data TSLA --mock
+
+# 运行技术分析
+python main.py analyze TSLA
+
+# 查看日志
+tail -f logs/trading_assistant.log
+```
+
+### 常见问题解决
+1. **模块导入错误**：确认虚拟环境已激活
+2. **依赖缺失**：运行`pip install -r requirements.txt`
+3. **数据获取失败**：检查网络连接和API配额
+4. **测试失败**：检查测试数据和环境配置
+
+## 性能优化
+
+### 缓存策略
+- 实时数据：60秒TTL
+- 历史数据：1小时TTL
+- 技术指标：根据数据更新频率动态调整
+
+### 内存管理
+- 大数据集使用生成器
+- 及时清理临时变量
+- 监控内存使用情况
+
+### 并发处理
+- 数据获取使用异步处理
+- 技术指标计算支持并行
+- 避免阻塞主线程
+
+## 部署准备
+
+### 环境检查
+- Python版本兼容性
+- 依赖包版本一致性
+- 配置文件完整性
+- 日志目录权限
+
+### 配置管理
+- 生产环境配置分离
+- 敏感信息环境变量化
+- 配置验证机制
+
+### 监控指标
+- 系统资源使用率
+- API调用频率和成功率
+- 信号生成质量和数量
+- 错误率和响应时间

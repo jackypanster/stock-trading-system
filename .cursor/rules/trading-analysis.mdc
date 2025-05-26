@@ -1,5 +1,101 @@
----
-description:
-globs:
-alwaysApply: false
----
+# 技术分析和交易策略指南
+
+## 技术指标实现
+
+### RSI (相对强弱指数)
+- 实现位置：[app/analysis/indicators.py](mdc:app/analysis/indicators.py)
+- 使用Wilder's smoothing方法
+- 默认周期：14天
+- 超买阈值：70，超卖阈值：30
+- 极端超买：80，极端超卖：20
+
+### MACD (移动平均收敛发散)
+- 实现位置：[app/analysis/indicators.py](mdc:app/analysis/indicators.py)
+- 快线EMA：12天，慢线EMA：26天，信号线EMA：9天
+- 包含金叉/死叉检测
+- 零轴穿越分析
+- 柱状图趋势判断
+
+### ATR (平均真实波幅)
+- 实现位置：[app/analysis/indicators.py](mdc:app/analysis/indicators.py)
+- 使用Wilder's smoothing方法
+- 默认周期：14天
+- 用于波动率分析和止损位计算
+
+## 支撑阻力位识别
+
+### 算法实现
+- 实现位置：[app/analysis/support_resistance.py](mdc:app/analysis/support_resistance.py)
+- 使用滑动窗口法识别局部高低点
+- 支持噪音过滤和强度评级
+- 包含支撑阻力位聚类功能
+
+### 质量评估标准
+- 触及次数：2次以上为有效，4次以上为强支撑/阻力
+- 距离评估：0.5%以内为极近，1%以内为良好，2%以内为可接受
+- 强度评级：强、中、弱三个等级
+
+## 交易策略框架
+
+### 策略基类
+- 实现位置：[app/analysis/strategies.py](mdc:app/analysis/strategies.py)
+- `BaseStrategy`抽象基类定义策略接口
+- `SupportResistanceStrategy`具体策略实现
+- 支持信号生成、置信度计算、风险管理
+
+### 信号生成逻辑
+
+#### 买入信号条件
+1. 价格接近支撑位（1%以内）
+2. RSI超卖确认（<30）
+3. MACD金叉或即将金叉
+4. 移动平均线支撑确认
+5. 成交量放大确认
+
+#### 卖出信号条件
+1. 价格接近阻力位（1%以内）
+2. RSI超买确认（>70）
+3. MACD死叉或即将死叉
+4. 移动平均线阻力确认
+5. 成交量放大确认
+
+### 置信度计算
+- 实现位置：[app/analysis/confidence.py](mdc:app/analysis/confidence.py)
+- 多维度评估：技术指标(35%) + 支撑阻力位(25%) + 市场环境(20%) + 风险回报比(15%) + 成交量确认(5%)
+- 置信度等级：very_high(≥0.85), high(≥0.75), medium(≥0.65), low(≥0.50), very_low(<0.50)
+
+### 信号过滤机制
+- 实现位置：[app/analysis/signal_filter.py](mdc:app/analysis/signal_filter.py)
+- 多维度过滤：置信度、信号类型、时间窗口、风险回报比
+- 重复信号去除：30分钟窗口内相似信号
+- 质量评估和统计分析
+
+## 风险管理原则
+
+### 仓位管理
+- 单只股票最大仓位：15%
+- 总仓位控制：80%
+- 动态仓位调整基于置信度
+
+### 止损止盈
+- 默认止损：2%
+- 风险回报比最低要求：1.5:1
+- 支持多级止盈设置
+
+### 市场条件适应
+- 高波动期降低仓位
+- 低流动性股票避免交易
+- 市场极端情况暂停交易
+
+## 数据要求
+
+### 最小数据量
+- RSI计算：至少15个交易日
+- MACD计算：至少35个交易日
+- 支撑阻力位：至少20个交易日
+- ATR计算：至少15个交易日
+
+### 数据质量检查
+- 价格数据完整性验证
+- 成交量异常检测
+- 数据时间连续性检查

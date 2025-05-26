@@ -1,5 +1,87 @@
----
-description:
-globs:
-alwaysApply: false
----
+# 开发规范和代码风格指南
+
+## Python代码规范
+
+### 代码风格
+- 遵循PEP 8标准
+- 使用4个空格缩进，不使用Tab
+- 行长度限制为88字符（Black格式化器标准）
+- 使用双引号作为字符串默认格式
+
+### 命名规范
+- 类名：使用PascalCase（如：`DataFetcher`, `TradingSignal`）
+- 函数和变量：使用snake_case（如：`get_stock_data`, `current_price`）
+- 常量：使用UPPER_SNAKE_CASE（如：`DEFAULT_CACHE_TTL`）
+- 私有方法：以单下划线开头（如：`_calculate_rsi`）
+
+### 文档字符串
+- 所有公共函数和类必须有docstring
+- 使用Google风格的docstring格式
+- 包含参数类型、返回值类型和异常说明
+
+```python
+def calculate_rsi(prices: List[float], period: int = 14) -> Dict[str, Any]:
+    """
+    计算相对强弱指数(RSI)
+    
+    Args:
+        prices: 价格序列
+        period: 计算周期，默认14
+        
+    Returns:
+        包含RSI值和相关信息的字典
+        
+    Raises:
+        ValueError: 当价格数据不足时
+    """
+```
+
+### 类型注解
+- 所有函数参数和返回值必须有类型注解
+- 使用`typing`模块的类型（如：`List`, `Dict`, `Optional`）
+- 复杂类型使用`TypedDict`或`dataclass`
+
+### 错误处理
+- 使用具体的异常类型，避免裸露的`except:`
+- 记录异常信息到日志
+- 对外部API调用添加重试机制
+
+## 项目特定规范
+
+### 模块组织
+- 每个模块应该有明确的职责
+- 相关功能放在同一个包中
+- 避免循环导入
+
+### 配置管理
+- 所有配置通过[app/core/config.py](mdc:app/core/config.py)统一管理
+- 敏感信息使用环境变量
+- 配置文件使用YAML格式
+
+### 日志记录
+- 使用[app/utils/logger.py](mdc:app/utils/logger.py)统一日志系统
+- 不同模块使用不同的logger名称
+- 记录关键操作和错误信息
+
+### 测试规范
+- 测试文件以`test_`开头
+- 每个功能模块都应该有对应的测试
+- 使用pytest框架
+- 测试覆盖率目标80%以上
+
+## 数据处理规范
+
+### 股票数据
+- 股票代码统一使用大写（如：TSLA, AAPL）
+- 价格数据使用float类型
+- 时间戳使用datetime对象
+
+### 缓存策略
+- 实时数据缓存60秒
+- 历史数据缓存1小时
+- 使用pickle格式存储复杂对象
+
+### 信号生成
+- 所有信号必须包含置信度（0-1范围）
+- 信号类型：'buy', 'sell', 'hold'
+- 包含生成原因和时间戳

@@ -1,5 +1,44 @@
----
-description:
-globs:
-alwaysApply: false
----
+# 美股日内套利助手 - 项目结构指南
+
+## 项目概述
+这是一个专注于美股市场的个人投资助手工具，通过程序化分析识别高波动股票的日内套利机会。
+
+## 核心架构
+
+### 主入口点
+- [main.py](mdc:main.py) - CLI主程序入口，包含所有命令行接口
+- [app/core/config.py](mdc:app/core/config.py) - 配置管理系统
+- [app/utils/logger.py](mdc:app/utils/logger.py) - 日志系统
+
+### 核心模块结构
+
+#### 数据获取模块 (app/data/)
+- [app/data/fetcher.py](mdc:app/data/fetcher.py) - 主数据获取器，支持yfinance和备用数据源
+- [app/data/cache.py](mdc:app/data/cache.py) - 数据缓存机制
+
+#### 技术分析模块 (app/analysis/)
+- [app/analysis/indicators.py](mdc:app/analysis/indicators.py) - 技术指标计算(RSI, MACD, ATR)
+- [app/analysis/support_resistance.py](mdc:app/analysis/support_resistance.py) - 支撑阻力位识别
+- [app/analysis/strategies.py](mdc:app/analysis/strategies.py) - 交易策略和信号生成
+- [app/analysis/confidence.py](mdc:app/analysis/confidence.py) - 信号置信度计算
+- [app/analysis/signal_filter.py](mdc:app/analysis/signal_filter.py) - 信号过滤机制
+
+#### 配置文件
+- [config/system.yaml](mdc:config/system.yaml) - 系统配置
+- [.env.example](mdc:.env.example) - 环境变量模板
+- [requirements.txt](mdc:requirements.txt) - Python依赖
+
+#### 开发文档
+- [docs/development-roadmap.md](mdc:docs/development-roadmap.md) - 开发进度追踪
+- [docs/deployment.md](mdc:docs/deployment.md) - 部署指南
+- [README.md](mdc:README.md) - 项目说明
+
+## 开发状态
+- ✅ 阶段1: 基础框架搭建 (100%)
+- ✅ 阶段2: 数据获取模块 (100%)
+- ✅ 阶段3: 技术分析模块 (100%)
+- ✅ 阶段4: 信号生成模块 (100%)
+- ⏳ 阶段5: 风险控制模块 (待开始)
+
+## 数据流向
+1. 数据获取 → 缓存 → 技术分析 → 信号生成 → 信号过滤 → 输出结果

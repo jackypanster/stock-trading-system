@@ -1,5 +1,172 @@
----
-description:
-globs:
-alwaysApply: false
----
+# 数据管理和API使用指南
+
+## 数据获取架构
+
+### 主数据源
+- **yfinance**: 主要数据源，免费且稳定
+- 实现位置：[app/data/fetcher.py](mdc:app/data/fetcher.py)
+- 支持实时价格、历史数据、股票信息获取
+- API限制：无官方限制，但建议控制请求频率
+
+### 备用数据源
+- **Alpha Vantage**: 备用数据源1
+- **Finnhub**: 备用数据源2
+- 自动切换机制：主数据源失败时自动切换
+- 失败阈值：连续3次失败触发切换
+
+### 数据缓存系统
+- 实现位置：[app/data/cache.py](mdc:app/data/cache.py)
+- 缓存后端：本地文件系统 (pickle格式)
+- 缓存目录：`data/cache/` (被[.gitignore](mdc:.gitignore)排除)
+
+## 缓存策略
+
+### 缓存TTL设置
+```python
+CACHE_TTL = {
+    'current_price': 60,      # 实时价格：60秒
+    'stock_info': 3600,       # 股票信息：1小时
+    'history_1d': 3600,       # 日线历史：1小时
+    'history_1h': 300,        # 小时线历史：5分钟
+    'indicators': 300,        # 技术指标：5分钟
+}
+```
+
+### 缓存键命名规范
+- 格式：`{data_type}_{symbol}_{params_hash}`
+- 示例：`current_price_TSLA_abc123`, `history_AAPL_1d_20_def456`
+- 使用MD5哈希确保键的唯一性
+
+### 缓存清理策略
+- 自动清理：启动时清理过期缓存
+- 手动清理：`python main.py --clear-cache`
+- 最大缓存大小：500MB
+
+## 数据格式标准
+
+### 股票代码规范
+- 统一使用大写：TSLA, AAPL, NVDA
+- 验证格式：1-5个字母
+- 特殊处理：BRK.A, BRK.B等带点号的代码
+
+### 价格数据格式
+```python
+{
+    'symbol': 'TSLA',
+    'current_price': 250.50,
+    'timestamp': datetime.now(),
+    'currency': 'USD',
+    'market_status': 'open'  # open, closed, pre_market, after_hours
+}
+```
+
+### 历史数据格式
+```python
+{
+    'symbol': 'TSLA',
+    'data': pandas.DataFrame,  # OHLCV数据
+    'period': '1d',           # 数据周期
+    'interval': '1d',         # 数据间隔
+    'start_date': datetime,
+    'end_date': datetime
+}
+```
+
+## API使用最佳实践
+
+### 请求频率控制
+- yfinance：每秒最多2个请求
+- Alpha Vantage：每分钟最多5个请求
+- Finnhub：每分钟最多60个请求
+- 实现：使用令牌桶算法限流
+
+### 错误处理策略
+```python
+def fetch_with_retry(func, max_retries=3, delay=1):
+    """
+    带重试的数据获取
+    
+    Args:
+        func: 数据获取函数
+        max_retries: 最大重试次数
+        delay: 重试延迟(秒)
+    """
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(delay * (2 ** attempt))  # 指数退避
+```
+
+### 数据验证规则
+1. **价格数据验证**
+   - 价格必须大于0
+   - 成交量必须非负
+   - 时间戳必须合理
+
+2. **数据完整性检查**
+   - OHLCV数据不能有缺失值
+   - 时间序列必须连续
+   - 数据范围必须合理
+
+3. **异常数据处理**
+   - 价格异常波动检测（>20%单日涨跌）
+   - 成交量异常检测（>10倍平均值）
+   - 自动标记和过滤异常数据
+
+## 数据存储管理
+
+### 目录结构
+```
+data/
+├── cache/          # 缓存文件 (被gitignore)
+├── history/        # 历史数据 (被gitignore)
+├── backups/        # 数据备份 (被gitignore)
+└── config/         # 数据配置
+```
+
+### 文件命名规范
+- 缓存文件：`{hash}.pkl`
+- 历史数据：`{symbol}_{period}_{date}.csv`
+- 备份文件：`backup_{timestamp}.tar.gz`
+
+### 数据备份策略
+- 每日自动备份重要数据
+- 保留最近30天的备份
+- 压缩存储节省空间
+
+## 性能优化
+
+### 数据获取优化
+- 批量获取多只股票数据
+- 并行处理非相关请求
+- 预加载常用股票数据
+
+### 内存使用优化
+- 使用pandas的分块读取
+- 及时释放大数据对象
+- 监控内存使用情况
+
+### 网络优化
+- 连接池复用
+- 请求压缩
+- 超时设置合理
+
+## 数据安全
+
+### 敏感信息保护
+- API密钥存储在环境变量
+- 配置文件不包含敏感信息
+- 日志中不记录API密钥
+
+### 数据隐私
+- 不存储个人交易数据
+- 缓存数据定期清理
+- 遵循数据使用协议
+
+### 访问控制
+- API密钥权限最小化
+- 定期轮换API密钥
+- 监控API使用情况
