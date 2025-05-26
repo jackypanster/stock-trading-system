@@ -1,16 +1,2 @@
-2025-05-23 18:09:28,219 - test - [31mERROR[0m - 错误日志(应显示)
-2025-05-24 12:39:12,760 - data.fetcher - [31mERROR[0m - 获取 TSLA 价格失败: Too Many Requests. Rate limited. Try after a while.
-2025-05-24 12:39:12,761 - data.fetcher - [31mERROR[0m - 数据源连接测试失败: 获取 TSLA 价格失败: Too Many Requests. Rate limited. Try after a while.
-2025-05-24 12:39:36,685 - data.fetcher - [31mERROR[0m - 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
-2025-05-24 12:39:36,686 - data.fetcher - [31mERROR[0m - 数据源连接测试失败: 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
-2025-05-24 12:40:51,380 - data.fetcher - [31mERROR[0m - 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
-2025-05-24 12:40:51,380 - data.fetcher - [31mERROR[0m - 数据源连接测试失败: 获取 AAPL 价格失败: Too Many Requests. Rate limited. Try after a while.
-2025-05-24 13:07:23,200 - __main__ - [31mERROR[0m - 技术分析失败: name '_loggers' is not defined
-2025-05-24 13:16:22,193 - __main__ - [31mERROR[0m - 技术分析失败: 数据长度不足，至少需要35个数据点
-2025-05-24 13:16:32,554 - __main__ - [31mERROR[0m - 技术分析失败: 数据长度不足，至少需要35个数据点
-2025-05-24 13:17:08,971 - __main__ - [31mERROR[0m - 技术分析失败: 数据长度不足，至少需要35个数据点
-2025-05-24 13:43:17,662 - __main__ - [31mERROR[0m - 技术分析失败: Object of type Timestamp is not JSON serializable
-2025-05-26 14:53:06,119 - __main__ - [31mERROR[0m - 分析失败: 'str' object has no attribute 'action'
-2025-05-26 14:53:58,960 - __main__ - [31mERROR[0m - 分析失败: Object of type RiskMetrics is not JSON serializable
-2025-05-26 15:44:16,894 - __main__ - [31mERROR[0m - 分析失败: [Errno 32] Broken pipe
-2025-05-26 15:44:28,229 - __main__ - [31mERROR[0m - 信号获取失败: [Errno 32] Broken pipe
+
+2025-05-26 15:51:48,541 - __main__ - [31mERROR[0m - 分析失败: [Errno 32] Broken pipe

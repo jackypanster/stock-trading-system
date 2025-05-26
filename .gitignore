@@ -310,10 +310,13 @@ htmlcov/
 
 # 开发用的临时脚本
 dev_*.py
-test_*.py
 debug_*.py
 scratch_*.py
 playground_*.py
+
+# 临时测试文件（正式测试文件应在tests/目录下）
+test_t*.py
+test_*.py
 
 # 实验性代码
 experiments/
