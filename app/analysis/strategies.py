@@ -361,42 +361,18 @@ class SupportResistanceStrategy(BaseStrategy):
                 if buy_signal:
                     return buy_signal
         
-        # 检查是否接近阻力位（卖出机会）
+        # 检查是否接近阻力位（卖出机会）- 增强版卖出信号生成
         elif (position_desc == "接近阻力位" or 
               (resistance_distance and resistance_distance['percentage'] <= proximity_threshold)):
             
             if nearest_resistance and self._is_level_strong_enough(nearest_resistance, min_strength):
-                # 计算置信度
-                confidence = self._calculate_confidence(
-                    signal_type='sell',
-                    distance_info=resistance_distance,
-                    level_info=nearest_resistance,
-                    full_analysis=full_analysis
+                # 生成增强版卖出信号
+                sell_signal = self._generate_enhanced_sell_signal(
+                    current_price, current_time, current_atr, 
+                    nearest_resistance, resistance_distance, full_analysis
                 )
-                
-                if confidence >= min_confidence:
-                    # 计算止损位和止盈位
-                    stop_loss = current_price + (current_atr * atr_multiplier)
-                    risk_distance = nearest_resistance['price'] - current_price
-                    take_profit = current_price - (risk_distance * 2)  # 2:1风险回报比
-                    
-                    return TradingSignal(
-                        signal_type='sell',
-                        action='enter',
-                        confidence=confidence,
-                        price=current_price,
-                        timestamp=current_time,
-                        reason=f"接近阻力位 ${nearest_resistance['price']:.2f}，强度:{nearest_resistance['strength_rating']}",
-                        stop_loss=stop_loss,
-                        take_profit=take_profit,
-                        position_size=min(0.5, confidence),  # 基于置信度调整仓位
-                        metadata={
-                            'resistance_level': nearest_resistance['price'],
-                            'resistance_strength': nearest_resistance['strength_rating'],
-                            'distance_pct': resistance_distance['percentage'] if resistance_distance else None,
-                            'atr_value': current_atr
-                        }
-                    )
+                if sell_signal:
+                    return sell_signal
         
         return None
     
@@ -493,6 +469,101 @@ class SupportResistanceStrategy(BaseStrategy):
             
         except Exception as e:
             self.logger.error(f"增强版买入信号生成失败: {e}")
+            return None
+    
+    def _generate_enhanced_sell_signal(self,
+                                     current_price: float,
+                                     current_time: datetime,
+                                     current_atr: float,
+                                     nearest_resistance: Dict[str, Any],
+                                     resistance_distance: Optional[Dict[str, Any]],
+                                     full_analysis: Dict[str, Any]) -> Optional[TradingSignal]:
+        """
+        生成增强版卖出信号（T4.1.3核心功能）
+        
+        包含多重技术指标确认和高级信号质量评估
+        
+        Args:
+            current_price: 当前价格
+            current_time: 当前时间
+            current_atr: 当前ATR值
+            nearest_resistance: 最近阻力位信息
+            resistance_distance: 阻力位距离信息
+            full_analysis: 完整分析结果
+            
+        Returns:
+            增强版卖出信号或None
+        """
+        try:
+            # 1. 基础置信度计算
+            base_confidence = self._calculate_confidence(
+                signal_type='sell',
+                distance_info=resistance_distance,
+                level_info=nearest_resistance,
+                full_analysis=full_analysis
+            )
+            
+            # 2. 技术指标确认分析
+            technical_confirmations = self._analyze_technical_confirmations_for_sell(full_analysis)
+            
+            # 3. 成交量确认
+            volume_confirmation = self._analyze_volume_for_sell(full_analysis)
+            
+            # 4. 趋势确认
+            trend_confirmation = self._analyze_trend_for_sell(full_analysis)
+            
+            # 5. 综合置信度计算
+            enhanced_confidence = self._calculate_enhanced_sell_confidence(
+                base_confidence,
+                technical_confirmations,
+                volume_confirmation,
+                trend_confirmation
+            )
+            
+            # 6. 检查最小置信度要求
+            if enhanced_confidence < self.config['min_confidence']:
+                self.logger.debug(f"卖出信号置信度不足: {enhanced_confidence:.3f} < {self.config['min_confidence']}")
+                return None
+            
+            # 7. 计算增强版止损止盈
+            stop_loss, take_profit = self._calculate_enhanced_sell_risk_levels(
+                current_price, current_atr, nearest_resistance, technical_confirmations
+            )
+            
+            # 8. 生成信号原因描述
+            reason = self._generate_sell_signal_reason(
+                nearest_resistance, technical_confirmations, volume_confirmation, trend_confirmation
+            )
+            
+            # 9. 计算动态仓位大小
+            position_size = self._calculate_dynamic_position_size(enhanced_confidence, technical_confirmations)
+            
+            # 10. 生成增强版卖出信号
+            return TradingSignal(
+                signal_type='sell',
+                action='enter',
+                confidence=enhanced_confidence,
+                price=current_price,
+                timestamp=current_time,
+                reason=reason,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
+                position_size=position_size,
+                metadata={
+                    'resistance_level': nearest_resistance['price'],
+                    'resistance_strength': nearest_resistance['strength_rating'],
+                    'distance_pct': resistance_distance['percentage'] if resistance_distance else None,
+                    'atr_value': current_atr,
+                    'technical_confirmations': technical_confirmations,
+                    'volume_confirmation': volume_confirmation,
+                    'trend_confirmation': trend_confirmation,
+                    'base_confidence': base_confidence,
+                    'enhancement_factor': enhanced_confidence - base_confidence
+                }
+            )
+            
+        except Exception as e:
+            self.logger.error(f"增强版卖出信号生成失败: {e}")
             return None
     
     def _analyze_technical_confirmations_for_buy(self, full_analysis: Dict[str, Any]) -> Dict[str, Any]:
@@ -905,12 +976,12 @@ class SupportResistanceStrategy(BaseStrategy):
         position_desc = "中性区域"
         
         # 使用策略配置的proximity_threshold重新判断
-        if resistance_distance and abs(resistance_distance['percentage']) <= proximity_threshold:
+        if resistance_distance and resistance_distance['percentage'] <= proximity_threshold:
             position_desc = "接近阻力位"
         elif support_distance and support_distance['percentage'] <= proximity_threshold:
             position_desc = "接近支撑位"
         elif resistance_distance and support_distance:
-            if abs(resistance_distance['percentage']) < support_distance['percentage']:
+            if resistance_distance['percentage'] < support_distance['percentage']:
                 position_desc = "偏向阻力位"
             else:
                 position_desc = "偏向支撑位"
@@ -918,6 +989,273 @@ class SupportResistanceStrategy(BaseStrategy):
         adjusted_position['position_description'] = position_desc
         
         return adjusted_position
+
+    def _analyze_technical_confirmations_for_sell(self, full_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        分析技术指标对卖出信号的确认
+        
+        Args:
+            full_analysis: 完整分析结果
+            
+        Returns:
+            技术确认信息
+        """
+        confirmations = {
+            'rsi_overbought': False,
+            'macd_bearish': False,
+            'moving_avg_resistance': False,
+            'confirmation_count': 0,
+            'confirmation_strength': 0.0
+        }
+        
+        try:
+            # 从完整分析中获取技术指标数据
+            indicators = full_analysis.get('indicators', {})
+            
+            # RSI超买确认
+            rsi_data = indicators.get('rsi_14', {})
+            if rsi_data and not rsi_data.get('error'):
+                current_rsi = rsi_data.get('current_rsi', 50)
+                if current_rsi is not None and current_rsi >= 65:  # 更严格的超买条件
+                    confirmations['rsi_overbought'] = True
+                    confirmations['confirmation_count'] += 1
+                    confirmations['confirmation_strength'] += 0.2
+                    if current_rsi >= 75:  # 极度超买
+                        confirmations['confirmation_strength'] += 0.1
+            
+            # MACD看跌确认
+            macd_data = indicators.get('macd', {})
+            if macd_data and not macd_data.get('error'):
+                signal_type = macd_data.get('signal_type', '')
+                cross_signal = macd_data.get('cross_signal', '')
+                position = macd_data.get('position', '')
+                
+                # 死叉或即将死叉
+                if signal_type == '卖出信号' or cross_signal == '死叉':
+                    confirmations['macd_bearish'] = True
+                    confirmations['confirmation_count'] += 1
+                    confirmations['confirmation_strength'] += 0.25
+                # MACD在零轴下方且柱状图下降
+                elif position == '空头区域' and macd_data.get('histogram_trend') == '下降':
+                    confirmations['macd_bearish'] = True
+                    confirmations['confirmation_count'] += 1
+                    confirmations['confirmation_strength'] += 0.15
+            
+            # 移动平均线阻力确认
+            price_position = full_analysis.get('price_position', {})
+            if price_position:
+                below_count = sum(1 for pos in price_position.values() if pos == 'below')
+                total_count = len([pos for pos in price_position.values() if pos in ['above', 'below']])
+                
+                if total_count > 0:
+                    below_ratio = below_count / total_count
+                    if below_ratio >= 0.5:  # 至少一半均线下方
+                        confirmations['moving_avg_resistance'] = True
+                        confirmations['confirmation_count'] += 1
+                        confirmations['confirmation_strength'] += 0.1 + (below_ratio - 0.5) * 0.2
+            
+        except Exception as e:
+            self.logger.warning(f"卖出技术指标确认分析失败: {e}")
+        
+        return confirmations
+
+    def _analyze_volume_for_sell(self, full_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        分析成交量对卖出信号的确认
+        
+        Args:
+            full_analysis: 完整分析结果
+            
+        Returns:
+            成交量确认信息
+        """
+        volume_confirmation = {
+            'increasing_volume': False,
+            'above_average': False,
+            'confirmation_strength': 0.0
+        }
+        
+        try:
+            # 这里可以添加成交量分析逻辑
+            # 由于当前数据结构中没有成交量分析，先提供基础框架
+            volume_confirmation['confirmation_strength'] = 0.05  # 基础分值
+            
+        except Exception as e:
+            self.logger.warning(f"卖出成交量分析失败: {e}")
+        
+        return volume_confirmation
+    
+    def _analyze_trend_for_sell(self, full_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        分析趋势对卖出信号的确认
+        
+        Args:
+            full_analysis: 完整分析结果
+            
+        Returns:
+            趋势确认信息
+        """
+        trend_confirmation = {
+            'downtrend': False,
+            'trend_strength': 'neutral',
+            'confirmation_strength': 0.0
+        }
+        
+        try:
+            # 基于价格相对均线位置判断趋势
+            price_position = full_analysis.get('price_position', {})
+            if price_position:
+                below_count = sum(1 for pos in price_position.values() if pos == 'below')
+                total_count = len([pos for pos in price_position.values() if pos in ['above', 'below']])
+                
+                if total_count > 0:
+                    below_ratio = below_count / total_count
+                    if below_ratio >= 0.6:
+                        trend_confirmation['downtrend'] = True
+                        trend_confirmation['trend_strength'] = 'strong'
+                        trend_confirmation['confirmation_strength'] = 0.15
+                    elif below_ratio >= 0.4:
+                        trend_confirmation['trend_strength'] = 'weak_down'
+                        trend_confirmation['confirmation_strength'] = 0.05
+            
+            # 检查ATR趋势（波动率变化）
+            indicators = full_analysis.get('indicators', {})
+            atr_data = indicators.get('atr', {})
+            if atr_data and not atr_data.get('error'):
+                atr_trend = atr_data.get('atr_trend', '')
+                if atr_trend == '上升':  # 波动率上升有利于卖出信号
+                    trend_confirmation['confirmation_strength'] += 0.05
+            
+        except Exception as e:
+            self.logger.warning(f"卖出趋势分析失败: {e}")
+        
+        return trend_confirmation
+
+    def _calculate_enhanced_sell_confidence(self,
+                                          base_confidence: float,
+                                          technical_confirmations: Dict[str, Any],
+                                          volume_confirmation: Dict[str, Any],
+                                          trend_confirmation: Dict[str, Any]) -> float:
+        """
+        计算增强版卖出信号置信度
+        
+        Args:
+            base_confidence: 基础置信度
+            technical_confirmations: 技术确认信息
+            volume_confirmation: 成交量确认信息
+            trend_confirmation: 趋势确认信息
+            
+        Returns:
+            增强版置信度
+        """
+        enhanced_confidence = base_confidence
+        
+        # 技术指标确认加成
+        enhanced_confidence += technical_confirmations.get('confirmation_strength', 0.0)
+        
+        # 成交量确认加成
+        enhanced_confidence += volume_confirmation.get('confirmation_strength', 0.0)
+        
+        # 趋势确认加成
+        enhanced_confidence += trend_confirmation.get('confirmation_strength', 0.0)
+        
+        # 多重确认奖励
+        confirmation_count = technical_confirmations.get('confirmation_count', 0)
+        if confirmation_count >= 2:
+            enhanced_confidence += 0.1  # 2个以上确认信号奖励
+        if confirmation_count >= 3:
+            enhanced_confidence += 0.05  # 3个确认信号额外奖励
+        
+        # 确保在合理范围内
+        return max(0.0, min(1.0, enhanced_confidence))
+
+    def _calculate_enhanced_sell_risk_levels(self,
+                                           current_price: float,
+                                           current_atr: float,
+                                           nearest_resistance: Dict[str, Any],
+                                           technical_confirmations: Dict[str, Any]) -> Tuple[float, float]:
+        """
+        计算增强版卖出信号风险管理水平
+        
+        Args:
+            current_price: 当前价格
+            current_atr: 当前ATR值
+            nearest_resistance: 最近阻力位
+            technical_confirmations: 技术确认信息
+            
+        Returns:
+            (止损价位, 止盈价位)
+        """
+        atr_multiplier = self.config['atr_multiplier']
+        
+        # 基础止损：阻力位上方或ATR止损，取较近者
+        resistance_stop = nearest_resistance['price'] * 1.02  # 阻力位上方2%
+        atr_stop = current_price + (current_atr * atr_multiplier)
+        stop_loss = min(resistance_stop, atr_stop)  # 取较低者，减少风险
+        
+        # 根据技术确认强度调整风险回报比
+        confirmation_strength = technical_confirmations.get('confirmation_strength', 0.0)
+        
+        if confirmation_strength >= 0.3:
+            # 强确认：使用3:1风险回报比
+            risk_distance = stop_loss - current_price
+            take_profit = current_price - (risk_distance * 3)
+        elif confirmation_strength >= 0.15:
+            # 中等确认：使用2.5:1风险回报比
+            risk_distance = stop_loss - current_price
+            take_profit = current_price - (risk_distance * 2.5)
+        else:
+            # 弱确认：使用2:1风险回报比
+            risk_distance = stop_loss - current_price
+            take_profit = current_price - (risk_distance * 2)
+        
+        return stop_loss, take_profit
+
+    def _generate_sell_signal_reason(self,
+                                   nearest_resistance: Dict[str, Any],
+                                   technical_confirmations: Dict[str, Any],
+                                   volume_confirmation: Dict[str, Any],
+                                   trend_confirmation: Dict[str, Any]) -> str:
+        """
+        生成卖出信号的详细原因描述
+        
+        Args:
+            nearest_resistance: 最近阻力位
+            technical_confirmations: 技术确认
+            volume_confirmation: 成交量确认
+            trend_confirmation: 趋势确认
+            
+        Returns:
+            信号原因描述
+        """
+        reason_parts = []
+        
+        # 主要原因：接近阻力位
+        resistance_price = nearest_resistance['price']
+        resistance_strength = nearest_resistance['strength_rating']
+        reason_parts.append(f"接近{resistance_strength}阻力位${resistance_price:.2f}")
+        
+        # 技术指标确认
+        confirmations = []
+        if technical_confirmations.get('rsi_overbought'):
+            confirmations.append("RSI超买")
+        if technical_confirmations.get('macd_bearish'):
+            confirmations.append("MACD看跌")
+        if technical_confirmations.get('moving_avg_resistance'):
+            confirmations.append("均线阻力")
+        
+        if confirmations:
+            reason_parts.append(f"技术确认: {'/'.join(confirmations)}")
+        
+        # 趋势确认
+        if trend_confirmation.get('downtrend'):
+            trend_strength = trend_confirmation.get('trend_strength', 'weak')
+            if trend_strength == 'strong':
+                reason_parts.append("强下降趋势")
+            else:
+                reason_parts.append("下降趋势")
+        
+        return "，".join(reason_parts)
 
 
 # 便捷函数
