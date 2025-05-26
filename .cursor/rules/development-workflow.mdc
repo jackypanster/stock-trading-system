@@ -1,8 +1,9 @@
 ---
-description: 
-globs: 
+description: 开发工作流程和测试策略指南
+globs: "test_*.py,tests/**/*.py"
 alwaysApply: false
 ---
+
 # 开发工作流和测试指南
 
 ## 开发环境设置

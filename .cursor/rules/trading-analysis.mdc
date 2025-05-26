@@ -1,8 +1,9 @@
 ---
-description: 
-globs: 
+description: 技术分析指标和交易策略实现指南
+globs: "app/analysis/**/*.py"
 alwaysApply: false
 ---
+
 # 技术分析和交易策略指南
 
 ## 技术指标实现

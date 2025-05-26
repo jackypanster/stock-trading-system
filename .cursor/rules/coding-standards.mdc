@@ -1,8 +1,9 @@
 ---
-description: 
-globs: 
+description: Python开发规范和代码风格指南
+globs: "**/*.py"
 alwaysApply: false
 ---
+
 # 开发规范和代码风格指南
 
 ## Python代码规范

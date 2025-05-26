@@ -1,8 +1,9 @@
 ---
-description: 
-globs: 
+description: 数据获取、缓存和API使用管理指南
+globs: "app/data/**/*.py"
 alwaysApply: false
 ---
+
 # 数据管理和API使用指南
 
 ## 数据获取架构
