@@ -75,16 +75,34 @@
 - 定期检查规则内容的准确性和完整性
 - 保持规则文件的简洁性和可读性
 
-## 文件引用格式
+## 文件格式规范
 
+### YAML Frontmatter
+每个 `.mdc` 文件都包含 YAML 前置元数据：
+```yaml
+---
+description: 规则描述
+globs: "文件匹配模式"
+alwaysApply: false
+---
+```
+
+### 文件引用格式
 在规则文件中，使用以下格式引用项目文件：
 ```markdown
-[filename.ext](mdc:filename.ext)
+@filename.ext
 ```
 
 例如：
-- `[main.py](mdc:main.py)` - 引用主程序文件
-- `[app/core/config.py](mdc:app/core/config.py)` - 引用配置文件
-- `[docs/development-roadmap.md](mdc:docs/development-roadmap.md)` - 引用开发路线图
+- `@main.py` - 引用主程序文件
+- `@app/core/config.py` - 引用配置文件
+- `@docs/development-roadmap.md` - 引用开发路线图
 
-这种格式让AI能够快速理解文件关系和项目结构。 
+这种格式让 Cursor AI 能够自动包含相关文件作为上下文。
+
+### Glob 模式配置
+- **项目结构**: `"**/*"` - 适用于所有文件
+- **Python代码**: `"**/*.py"` - 仅Python文件
+- **技术分析**: `"app/analysis/**/*.py"` - 分析模块
+- **测试文件**: `"test_*.py,tests/**/*.py"` - 测试相关
+- **数据管理**: `"app/data/**/*.py"` - 数据模块 
