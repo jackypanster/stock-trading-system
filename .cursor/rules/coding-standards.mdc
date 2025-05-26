@@ -1,3 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
 # 开发规范和代码风格指南
 
 ## Python代码规范
