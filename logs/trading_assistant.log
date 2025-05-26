@@ -285,3 +285,32 @@
 2025-05-26 19:28:32,613 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成，主数据源: yfinance
 2025-05-26 19:28:40,185 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
 2025-05-26 19:28:46,823 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
+2025-05-26 19:33:16,788 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
+2025-05-26 19:33:17,969 - app.core.config - [32mINFO[0m - 加载系统配置: config/system.yaml
+2025-05-26 19:33:17,989 - app.core.config - [32mINFO[0m - 已加载 1 个股票配置
+2025-05-26 19:33:17,989 - app.core.config - [32mINFO[0m - 已加载 0 个策略配置
+2025-05-26 19:33:17,989 - app.core.config - [32mINFO[0m - 所有配置加载完成
+2025-05-26 19:33:17,990 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成，主数据源: yfinance
+2025-05-26 19:33:17,990 - data.fetcher - [32mINFO[0m - 故意失败的数据获取器初始化完成，将在第2次调用后失败
+2025-05-26 19:33:17,990 - data.fetcher - [32mINFO[0m - 模拟主数据源成功 (第2次调用)
+2025-05-26 19:33:17,990 - data.fetcher - [33mWARNING[0m - 获取价格 使用 yfinance 失败: 模拟yfinance失败
+2025-05-26 19:33:17,990 - data.fetcher - [33mWARNING[0m - 数据源 yfinance 失败 1 次
+2025-05-26 19:33:17,990 - data.fetcher - [32mINFO[0m - 获取价格 尝试备用数据源: mock
+2025-05-26 19:33:17,991 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成，主数据源: yfinance
+2025-05-26 19:33:17,991 - data.fetcher - [32mINFO[0m - 模拟数据获取器初始化完成
+2025-05-26 19:33:17,991 - data.fetcher - [32mINFO[0m - 获取 TSLA 模拟价格数据
+2025-05-26 19:33:18,496 - data.fetcher - [32mINFO[0m - 成功生成 TSLA 模拟价格: $254.07
+2025-05-26 19:33:18,496 - data.fetcher - [32mINFO[0m - 获取价格 成功切换到备用数据源: mock
+2025-05-26 19:33:18,497 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成，主数据源: yfinance
+2025-05-26 19:33:18,497 - data.fetcher - [32mINFO[0m - 模拟数据获取器初始化完成
+2025-05-26 19:33:18,498 - __main__ - [32mINFO[0m - 备用数据源测试完成: TSLA
+2025-05-26 19:36:16,982 - __main__ - INFO - 美股日内套利助手 v1.0.0 启动
+2025-05-26 19:36:18,110 - app.core.config - [32mINFO[0m - 加载系统配置: config/system.yaml
+2025-05-26 19:36:18,140 - app.core.config - [32mINFO[0m - 已加载 1 个股票配置
+2025-05-26 19:36:18,140 - app.core.config - [32mINFO[0m - 已加载 0 个策略配置
+2025-05-26 19:36:18,141 - app.core.config - [32mINFO[0m - 所有配置加载完成
+2025-05-26 19:36:18,141 - data.fetcher - [32mINFO[0m - 股票数据获取器初始化完成，主数据源: yfinance
+2025-05-26 19:36:18,141 - data.fetcher - [32mINFO[0m - 模拟数据获取器初始化完成
+2025-05-26 19:36:18,145 - data.fetcher - [32mINFO[0m - 生成 AAPL 模拟历史数据: 1mo, 1d
+2025-05-26 19:36:18,462 - data.fetcher - [32mINFO[0m - 成功生成 AAPL 模拟历史数据: 36 条记录
+2025-05-26 19:36:18,593 - __main__ - [32mINFO[0m - 完整分析完成: AAPL (信号:False, 风险:False, 模拟:True)
