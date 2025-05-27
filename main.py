@@ -197,10 +197,11 @@ def analyze(ctx, symbol, output_format, days, mock, with_signals, with_risk, por
                 from app.analysis.confidence import ConfidenceCalculator
                 from app.analysis.signal_filter import SignalFilter
                 
-                # 创建策略实例
-                strategy = SupportResistanceStrategy(config)
-                confidence_calc = ConfidenceCalculator(config)
-                signal_filter = SignalFilter(config)
+                # 创建策略实例，传递配置字典
+                config_dict = config.to_dict() if hasattr(config, 'to_dict') else config
+                strategy = SupportResistanceStrategy(config_dict)
+                confidence_calc = ConfidenceCalculator(config_dict)
+                signal_filter = SignalFilter(config_dict)
                 
                 # 生成信号
                 all_signals = strategy.analyze(hist_data, analysis_result=analysis_result)
@@ -239,8 +240,9 @@ def analyze(ctx, symbol, output_format, days, mock, with_signals, with_risk, por
                 from app.core.risk_manager import RiskManager
                 from app.core.portfolio import Portfolio
                 
-                # 创建风险管理器
-                risk_manager = RiskManager(config)
+                # 创建风险管理器，传递配置字典
+                config_dict = config.to_dict() if hasattr(config, 'to_dict') else config
+                risk_manager = RiskManager(config_dict)
                 
                 # 获取当前价格
                 current_price = analysis_result['current_price']
