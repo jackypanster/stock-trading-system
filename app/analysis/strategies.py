@@ -13,6 +13,7 @@ from datetime import datetime
 import logging
 
 from ..utils.logger import get_analysis_logger
+from ..core.config import get_config
 
 logger = get_analysis_logger()
 
@@ -114,10 +115,20 @@ class BaseStrategy(ABC):
         
         Args:
             name: 策略名称
-            config: 策略配置参数
+            config: 策略配置参数。如果为None，则使用系统配置
         """
         self.name = name
-        self.config = config or {}
+        # 使用统一的配置读取方式
+        if config is None:
+            system_config = get_config()
+            # 从系统配置中获取策略相关配置
+            self.config = system_config.get('strategies', {}).get(name, {})
+            if not self.config:
+                # 如果没有找到特定策略配置，使用通用策略配置
+                self.config = system_config.get('analysis', {})
+        else:
+            self.config = config
+            
         self.signals_generated = []  # 历史信号记录
         self.last_signal = None      # 最近一次信号
         self.logger = get_analysis_logger()
@@ -225,6 +236,7 @@ class SupportResistanceStrategy(BaseStrategy):
                 - proximity_threshold: 接近支撑阻力位的阈值，默认2.0%
                 - min_confidence: 最小信号置信度，默认0.6
                 - atr_multiplier: ATR止损倍数，默认2.0
+                如果为None，则使用系统配置
         """
         default_config = {
             'window': 5,
@@ -236,10 +248,31 @@ class SupportResistanceStrategy(BaseStrategy):
             'min_strength_rating': '弱'  # 最小强度要求
         }
         
-        if config:
-            default_config.update(config)
+        # 使用统一的配置读取方式
+        if config is None:
+            system_config = get_config()
+            # 从系统配置中获取支撑阻力位策略配置
+            strategy_config = system_config.get('strategies', {}).get('support_resistance', {})
+            if strategy_config:
+                default_config.update(strategy_config)
+            # 也从分析配置中获取相关参数
+            analysis_config = system_config.get('analysis', {})
+            if analysis_config:
+                # 映射分析配置到策略配置
+                if 'support_resistance' in analysis_config:
+                    sr_config = analysis_config['support_resistance']
+                    if 'window' in sr_config:
+                        default_config['window'] = sr_config['window']
+                    if 'tolerance' in sr_config:
+                        default_config['tolerance'] = sr_config['tolerance']
+                if 'min_confidence' in system_config.get('signals', {}):
+                    default_config['min_confidence'] = system_config['signals']['min_confidence']
+            final_config = default_config
+        else:
+            final_config = default_config.copy()
+            final_config.update(config)
         
-        super().__init__("SupportResistanceStrategy", default_config)
+        super().__init__("SupportResistanceStrategy", final_config)
     
     def analyze(self, df: pd.DataFrame, **kwargs) -> List[TradingSignal]:
         """

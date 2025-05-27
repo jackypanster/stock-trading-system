@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from .strategies import TradingSignal
 from .confidence import ConfidenceCalculator
 from ..utils.logger import get_analysis_logger
+from ..core.config import get_config
 
 logger = get_analysis_logger()
 
@@ -51,10 +52,18 @@ class SignalFilter:
         初始化信号过滤器
         
         Args:
-            config: 过滤器配置参数
+            config: 过滤器配置参数。如果为None，则使用系统配置
         """
-        self.config = self._get_default_config()
-        if config:
+        # 使用统一的配置读取方式
+        if config is None:
+            system_config = get_config()
+            # 从系统配置中获取信号过滤相关配置
+            self.config = self._get_default_config()
+            filter_config = system_config.get('signals', {}).get('filters', {})
+            if filter_config:
+                self.config.update(filter_config)
+        else:
+            self.config = self._get_default_config()
             self.config.update(config)
         
         self.confidence_calculator = ConfidenceCalculator(

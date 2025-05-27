@@ -76,6 +76,15 @@ performance:
   concurrent_analysis: 3
   max_workers: 4
   memory_limit: 500MB
+scheduler:
+  enabled: true
+  max_daily_calls: 7000  # Yahoo Finance允许8000次/天，保留1000次缓冲
+  max_hourly_calls: 300   # Yahoo Finance允许360次/小时，保留60次缓冲
+  max_minute_calls: 50    # Yahoo Finance允许60次/分钟，保留10次缓冲
+  update_interval: 300
+  watchlist:
+  - AMD
+  - PONY
 risk:
   default_max_position_pct: 0.15
   default_stop_loss_pct: 0.02

@@ -30,9 +30,6 @@ import json
 __version__ = "1.0.0"
 __author__ = "Trading Assistant Team"
 
-# 全局配置
-CONFIG = None
-
 # 自定义JSON编码器，处理Timestamp等不可序列化对象
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -47,28 +44,12 @@ class CustomJSONEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def load_config():
-    """加载系统配置"""
-    global CONFIG
-    
-    config_path = PROJECT_ROOT / "config" / "system.yaml"
-    if not config_path.exists():
-        click.echo(f"❌ 配置文件不存在: {config_path}", err=True)
-        sys.exit(1)
-    
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            CONFIG = yaml.safe_load(f)
-        click.echo("✅ 配置文件加载成功")
-        return CONFIG
-    except Exception as e:
-        click.echo(f"❌ 配置文件加载失败: {e}", err=True)
-        sys.exit(1)
+# 配置加载已移至 app.core.config 模块统一管理
 
 
-def setup_logging():
+def setup_logging(config):
     """设置日志系统"""
-    if not CONFIG:
+    if not config:
         return
     
     # 创建logs目录
@@ -76,8 +57,8 @@ def setup_logging():
     logs_dir.mkdir(exist_ok=True)
     
     # 配置日志
-    log_level = CONFIG.get('logging', {}).get('level', 'INFO')
-    log_format = CONFIG.get('logging', {}).get('format', 
+    log_level = config.get('logging', {}).get('level', 'INFO')
+    log_format = config.get('logging', {}).get('format', 
                                                 '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
     logging.basicConfig(
@@ -128,16 +109,17 @@ def cli(ctx, version, config, debug):
     
     # 加载配置
     try:
-        load_config()
-        ctx.obj['config'] = CONFIG
+        from app.core.config import get_config
+        config = get_config()
+        ctx.obj['config'] = config
         ctx.obj['debug'] = debug
         
         # 设置日志
         if debug:
-            CONFIG['logging'] = CONFIG.get('logging', {})
-            CONFIG['logging']['level'] = 'DEBUG'
+            config['logging'] = config.get('logging', {})
+            config['logging']['level'] = 'DEBUG'
         
-        logger = setup_logging()
+        logger = setup_logging(config)
         ctx.obj['logger'] = logger
         
     except Exception as e:
@@ -2004,17 +1986,169 @@ def test_backup(ctx, symbol, calls):
             logger.error(f"备用数据源测试失败: {e}")
 
 
+@cli.group()
+def scheduler():
+    """数据调度器管理命令"""
+    pass
+
+
+@scheduler.command('start')
+@click.option('--background', is_flag=True, help='后台运行')
+@click.pass_context
+def scheduler_start(ctx, background):
+    """启动数据调度器"""
+    logger = ctx.obj.get('logger')
+    config = ctx.obj.get('config', {})
+    
+    try:
+        from app.data.scheduler import start_scheduler, get_scheduler
+        
+        click.echo("🚀 启动数据调度器...")
+        
+        scheduler = start_scheduler(config)
+        status = scheduler.get_status()
+        
+        click.echo("✅ 数据调度器启动成功")
+        click.echo(f"📊 监控股票: {', '.join(status['watchlist'])}")
+        click.echo(f"⏰ 更新间隔: {status['update_interval']}秒")
+        click.echo(f"📞 每日限制: {status['max_daily_calls']}次")
+        click.echo(f"🕐 市场状态: {'开盘' if status['market_open'] else '休市'}")
+        
+        if background:
+            click.echo("🔄 调度器在后台运行中...")
+        else:
+            click.echo("⚠️ 调度器在前台运行，按Ctrl+C停止")
+            try:
+                import time
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                click.echo("\n🛑 停止调度器...")
+                scheduler.stop()
+                click.echo("✅ 调度器已停止")
+        
+        if logger:
+            logger.info("数据调度器启动")
+            
+    except Exception as e:
+        click.echo(f"❌ 启动调度器失败: {e}")
+        if logger:
+            logger.error(f"启动调度器失败: {e}")
+
+
+@scheduler.command('stop')
+@click.pass_context
+def scheduler_stop(ctx):
+    """停止数据调度器"""
+    logger = ctx.obj.get('logger')
+    
+    try:
+        from app.data.scheduler import stop_scheduler
+        
+        click.echo("🛑 停止数据调度器...")
+        stop_scheduler()
+        click.echo("✅ 数据调度器已停止")
+        
+        if logger:
+            logger.info("数据调度器停止")
+            
+    except Exception as e:
+        click.echo(f"❌ 停止调度器失败: {e}")
+        if logger:
+            logger.error(f"停止调度器失败: {e}")
+
+
+@scheduler.command('status')
+@click.option('--format', 'output_format', default='table', 
+              type=click.Choice(['table', 'json']), help='输出格式')
+@click.pass_context
+def scheduler_status(ctx, output_format):
+    """查看调度器状态"""
+    logger = ctx.obj.get('logger')
+    
+    try:
+        from app.data.scheduler import get_scheduler
+        
+        scheduler = get_scheduler()
+        status = scheduler.get_status()
+        
+        if output_format == 'json':
+            click.echo(json.dumps(status, indent=2, default=str, ensure_ascii=False))
+        else:
+            click.echo("📊 数据调度器状态")
+            click.echo("=" * 40)
+            click.echo(f"运行状态: {'🟢 运行中' if status['is_running'] else '🔴 已停止'}")
+            click.echo(f"市场状态: {'🟢 开盘' if status['market_open'] else '🔴 休市'}")
+            click.echo(f"监控股票: {', '.join(status['watchlist'])}")
+            click.echo(f"更新间隔: {status['update_interval']}秒")
+            click.echo(f"今日调用: {status['daily_calls']}/{status['max_daily_calls']}")
+            click.echo(f"调用历史: {status['call_history_count']}条记录")
+            click.echo(f"重置日期: {status['last_reset_date']}")
+        
+        if logger:
+            logger.info("查看调度器状态")
+            
+    except Exception as e:
+        click.echo(f"❌ 获取调度器状态失败: {e}")
+        if logger:
+            logger.error(f"获取调度器状态失败: {e}")
+
+
+@scheduler.command('force-fetch')
+@click.argument('symbol', required=False)
+@click.pass_context
+def scheduler_force_fetch(ctx, symbol):
+    """强制获取数据"""
+    logger = ctx.obj.get('logger')
+    
+    try:
+        from app.data.scheduler import get_scheduler
+        
+        scheduler = get_scheduler()
+        
+        if symbol:
+            click.echo(f"🔄 强制获取 {symbol.upper()} 数据...")
+            scheduler.force_fetch(symbol)
+            click.echo(f"✅ {symbol.upper()} 数据获取完成")
+        else:
+            click.echo("🔄 强制获取所有监控股票数据...")
+            scheduler.force_fetch()
+            click.echo("✅ 所有数据获取完成")
+        
+        if logger:
+            logger.info(f"强制获取数据: {symbol or '全部'}")
+            
+    except Exception as e:
+        click.echo(f"❌ 强制获取数据失败: {e}")
+        if logger:
+            logger.error(f"强制获取数据失败: {e}")
+
+
 @cli.command()
 @click.pass_context
 def status(ctx):
     """显示系统状态"""
+    logger = ctx.obj.get('logger')
+    config = ctx.obj.get('config', {})
+    
     click.echo("🏥 系统状态检查...")
     
     # 检查配置
-    if CONFIG:
+    if config:
         click.echo("✅ 配置系统: 正常")
     else:
         click.echo("❌ 配置系统: 异常")
+    
+    # 检查调度器状态
+    try:
+        from app.data.scheduler import get_scheduler
+        scheduler = get_scheduler()
+        status_info = scheduler.get_status()
+        click.echo(f"⏰ 调度器状态: {'🟢 运行中' if status_info['is_running'] else '🔴 已停止'}")
+        click.echo(f"📊 市场状态: {'🟢 开盘' if status_info['market_open'] else '🔴 休市'}")
+        click.echo(f"📞 今日调用: {status_info['daily_calls']}/{status_info['max_daily_calls']}")
+    except Exception as e:
+        click.echo(f"⏰ 调度器状态: ❌ 获取失败 ({e})")
     
     # 检查目录结构
     required_dirs = ['app', 'config', 'data', 'logs']
@@ -2041,6 +2175,9 @@ def status(ctx):
     click.echo(f"\n📍 项目根目录: {PROJECT_ROOT}")
     click.echo(f"🐍 Python版本: {sys.version}")
     click.echo(f"📦 应用版本: v{__version__}")
+    
+    if logger:
+        logger.info("系统状态检查完成")
 
 
 def main():

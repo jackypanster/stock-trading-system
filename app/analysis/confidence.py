@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import logging
 
 from ..utils.logger import get_analysis_logger
+from ..core.config import get_config
 
 logger = get_analysis_logger()
 
@@ -34,10 +35,18 @@ class ConfidenceCalculator:
         初始化置信度计算器
         
         Args:
-            config: 配置参数，包含各种权重和阈值设置
+            config: 配置参数，包含各种权重和阈值设置。如果为None，则使用系统配置
         """
-        self.config = self._get_default_config()
-        if config:
+        # 使用统一的配置读取方式
+        if config is None:
+            system_config = get_config()
+            # 从系统配置中获取置信度相关配置
+            self.config = self._get_default_config()
+            confidence_config = system_config.get('signals', {}).get('confidence', {})
+            if confidence_config:
+                self.config.update(confidence_config)
+        else:
+            self.config = self._get_default_config()
             self.config.update(config)
         
         self.logger = logger

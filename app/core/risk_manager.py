@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import math
 
+from .config import get_config
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,15 +44,21 @@ class RiskManager:
     负责所有风险控制相关的计算和验证
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Optional[Dict] = None):
         """
         初始化风险管理器
         
         Args:
-            config: 系统配置字典
+            config: 系统配置字典。如果为None，则使用系统配置
         """
-        self.config = config
-        self.risk_config = config.get('risk', {})
+        # 使用统一的配置读取方式
+        if config is None:
+            system_config = get_config()
+            self.config = system_config.to_dict()
+        else:
+            self.config = config
+            
+        self.risk_config = self.config.get('risk', {})
         
         # 全局风险参数
         self.max_total_exposure = self.risk_config.get('max_total_exposure', 0.80)
