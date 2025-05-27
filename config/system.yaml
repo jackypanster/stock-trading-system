@@ -11,8 +11,8 @@ analysis:
   min_volume_threshold: 1000000
   support_resistance:
     min_touches: 2
-    tolerance: 0.01
-    window: 20
+    tolerance: 1.0    # 增加容忍度，更容易聚类支撑阻力位
+    window: 5         # 减小窗口，更容易识别局部高低点
 app:
   language: zh_CN
   log_level: INFO

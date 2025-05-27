@@ -710,7 +710,7 @@ class MockDataFetcher(StockDataFetcher):
             # 解析期间
             days_map = {
                 '1d': 1, '2d': 2, '5d': 5, '10d': 10,
-                '1mo': 35, '2mo': 50, '3mo': 75, '6mo': 130, '1y': 260  # 增加数据点
+                '1mo': 50, '2mo': 70, '3mo': 95, '6mo': 150, '1y': 280  # 增加数据点以满足技术分析需求
             }
             days = days_map.get(period, 35)
             

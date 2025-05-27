@@ -240,10 +240,10 @@ class SupportResistanceStrategy(BaseStrategy):
         """
         default_config = {
             'window': 5,
-            'min_change_pct': 1.0,
-            'tolerance': 0.5,
-            'proximity_threshold': 2.0,  # 接近阈值百分比
-            'min_confidence': 0.6,
+            'min_change_pct': 0.5,  # 降低最小变化要求，更容易识别支撑阻力位
+            'tolerance': 1.0,  # 增加容忍度，更容易聚类
+            'proximity_threshold': 10.0,  # 进一步增加接近阈值，更容易触发信号
+            'min_confidence': 0.3,  # 降低最小置信度要求
             'atr_multiplier': 2.0,
             'min_strength_rating': '弱'  # 最小强度要求
         }
@@ -265,8 +265,9 @@ class SupportResistanceStrategy(BaseStrategy):
                         default_config['window'] = sr_config['window']
                     if 'tolerance' in sr_config:
                         default_config['tolerance'] = sr_config['tolerance']
-                if 'min_confidence' in system_config.get('signals', {}):
-                    default_config['min_confidence'] = system_config['signals']['min_confidence']
+                signals_config = system_config.get('signals', {})
+                if 'min_confidence' in signals_config:
+                    default_config['min_confidence'] = signals_config['min_confidence']
             final_config = default_config
         else:
             final_config = default_config.copy()
@@ -318,9 +319,45 @@ class SupportResistanceStrategy(BaseStrategy):
             atr = tech_indicators.calculate_atr(df, 14)
             current_atr = atr.iloc[-1] if len(atr) > 0 else 0
             
-            # 获取完整技术分析结果（为增强版买入信号提供技术指标确认）
+            # 获取技术分析结果（不包含支撑阻力位，避免重复分析）
             try:
-                technical_summary = tech_indicators.get_technical_summary(df)
+                # 手动计算技术指标，避免重复的支撑阻力位分析
+                prices = df['Close']
+                current_price = prices.iloc[-1]
+                
+                # 计算各种指标
+                rsi_14 = tech_indicators.calculate_rsi(prices, 14)
+                sma_20 = tech_indicators.calculate_sma(prices, 20)
+                sma_50 = tech_indicators.calculate_sma(prices, 50)
+                ema_12 = tech_indicators.calculate_ema(prices, 12)
+                ema_26 = tech_indicators.calculate_ema(prices, 26)
+                
+                # 计算MACD指标
+                macd_line, signal_line, histogram = tech_indicators.calculate_macd(prices, 12, 26, 9)
+                
+                # 构建技术分析摘要（不包含支撑阻力位）
+                technical_summary = {
+                    "symbol": df.get('Symbol', [None]).iloc[-1] if 'Symbol' in df.columns else "Unknown",
+                    "current_price": round(current_price, 2),
+                    "analysis_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "indicators": {
+                        "rsi_14": tech_indicators.analyze_rsi_signals(rsi_14),
+                        "macd": tech_indicators.analyze_macd_signals(macd_line, signal_line, histogram),
+                        "atr": tech_indicators.analyze_atr_signals(atr, prices),
+                        "moving_averages": {
+                            "sma_20": round(sma_20.iloc[-1], 2) if not pd.isna(sma_20.iloc[-1]) else None,
+                            "sma_50": round(sma_50.iloc[-1], 2) if not pd.isna(sma_50.iloc[-1]) else None,
+                            "ema_12": round(ema_12.iloc[-1], 2) if not pd.isna(ema_12.iloc[-1]) else None,
+                            "ema_26": round(ema_26.iloc[-1], 2) if not pd.isna(ema_26.iloc[-1]) else None,
+                        }
+                    },
+                    "price_position": {
+                        "vs_sma_20": "above" if current_price > sma_20.iloc[-1] else "below" if not pd.isna(sma_20.iloc[-1]) else "unknown",
+                        "vs_sma_50": "above" if current_price > sma_50.iloc[-1] else "below" if not pd.isna(sma_50.iloc[-1]) else "unknown",
+                        "vs_ema_12": "above" if current_price > ema_12.iloc[-1] else "below" if not pd.isna(ema_12.iloc[-1]) else "unknown",
+                    }
+                }
+                
                 # 将技术分析结果合并到完整分析中
                 analysis.update(technical_summary)
             except Exception as e:

@@ -414,4 +414,94 @@ class RiskManager:
         if portfolio_risk.available_cash < portfolio_risk.total_value * 0.1:
             recommendations.append("💰 现金比例偏低，建议保留更多现金")
             
-        return recommendations 
+        return recommendations
+    
+    def calculate_volatility(self, price_series) -> float:
+        """
+        计算历史波动率
+        
+        Args:
+            price_series: 价格序列
+            
+        Returns:
+            年化波动率
+        """
+        try:
+            import pandas as pd
+            import numpy as np
+            
+            if isinstance(price_series, pd.Series):
+                returns = price_series.pct_change().dropna()
+            else:
+                returns = pd.Series(price_series).pct_change().dropna()
+            
+            # 计算年化波动率（假设252个交易日）
+            volatility = returns.std() * np.sqrt(252)
+            return volatility
+            
+        except Exception as e:
+            logger.error(f"计算波动率失败: {e}")
+            return 0.0
+    
+    def calculate_max_drawdown(self, price_series) -> float:
+        """
+        计算最大回撤
+        
+        Args:
+            price_series: 价格序列
+            
+        Returns:
+            最大回撤（负值）
+        """
+        try:
+            import pandas as pd
+            import numpy as np
+            
+            if isinstance(price_series, pd.Series):
+                prices = price_series
+            else:
+                prices = pd.Series(price_series)
+            
+            # 计算累计最高价
+            peak = prices.expanding().max()
+            
+            # 计算回撤
+            drawdown = (prices - peak) / peak
+            
+            # 返回最大回撤
+            max_drawdown = drawdown.min()
+            return max_drawdown
+            
+        except Exception as e:
+            logger.error(f"计算最大回撤失败: {e}")
+            return 0.0
+    
+    def calculate_var(self, price_series, confidence: float = 0.95) -> float:
+        """
+        计算风险价值(VaR)
+        
+        Args:
+            price_series: 价格序列
+            confidence: 置信度
+            
+        Returns:
+            VaR值（负值表示损失）
+        """
+        try:
+            import pandas as pd
+            import numpy as np
+            
+            if isinstance(price_series, pd.Series):
+                returns = price_series.pct_change().dropna()
+            else:
+                returns = pd.Series(price_series).pct_change().dropna()
+            
+            # 计算VaR
+            var = np.percentile(returns, (1 - confidence) * 100)
+            return var
+            
+        except Exception as e:
+            logger.error(f"计算VaR失败: {e}")
+            return 0.0
+    
+ 

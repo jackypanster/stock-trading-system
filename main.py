@@ -209,10 +209,8 @@ def analyze(ctx, symbol, output_format, days, mock, with_signals, with_risk, por
                 buy_signals = [s for s in all_signals if s.signal_type == 'buy']
                 sell_signals = [s for s in all_signals if s.signal_type == 'sell']
                 
-                # 计算置信度
-                for signal in all_signals:
-                    confidence = confidence_calc.calculate_signal_confidence(signal, hist_data, analysis_result)
-                    signal.confidence = confidence
+                # 信号已经包含置信度，无需重新计算
+                # 策略在生成信号时已经计算了置信度
                 
                 # 过滤信号
                 filter_result = signal_filter.filter_signals(all_signals)
@@ -817,9 +815,9 @@ def signals(ctx, today, symbol, min_confidence, output_format, action, limit, mo
         click.echo(f"🔍 分析股票: {', '.join(symbols_to_analyze)}")
         
         # 创建策略和分析器实例
-        strategy = SupportResistanceStrategy(config)
-        confidence_calc = ConfidenceCalculator(config)
-        signal_filter = SignalFilter(config)
+        strategy = SupportResistanceStrategy()
+        confidence_calc = ConfidenceCalculator()
+        signal_filter = SignalFilter()
         
         # 收集所有信号
         all_signals = []
@@ -851,10 +849,8 @@ def signals(ctx, today, symbol, min_confidence, output_format, action, limit, mo
                 # 生成信号
                 signals = strategy.analyze(hist_data, analysis_result=analysis_result)
                 
-                # 计算置信度
+                # 信号已经包含置信度，只需要设置股票代码
                 for signal in signals:
-                    confidence = confidence_calc.calculate_signal_confidence(signal, hist_data, analysis_result)
-                    signal.confidence = confidence
                     signal.symbol = stock_symbol  # 确保信号包含股票代码
                 
                 # 添加到总信号列表
