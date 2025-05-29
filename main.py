@@ -29,16 +29,9 @@ def main():
         # 初始化应用
         config, logger = _initialize_app()
         
-        # 调试信息
-        print(f"🔍 调试: config类型: {type(config)}")
-        print(f"🔍 调试: logger类型: {type(logger)}")
-        
         # 创建CLI应用
         from app.cli import create_cli_app
         cli_app = create_cli_app(config, logger)
-        
-        # 调试信息
-        print(f"🔍 调试: cli_app类型: {type(cli_app)}")
         
         # 运行CLI应用
         cli_app()

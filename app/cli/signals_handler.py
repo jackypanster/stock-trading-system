@@ -190,12 +190,13 @@ class SignalsCommandHandler(BaseCommandHandler):
         # 获取数据获取器
         fetcher = get_fetcher(use_mock=mock)
         
-        # 创建策略和分析器实例
-        config_dict = self.config.to_dict() if hasattr(self.config, 'to_dict') else self.config
-        
-        # 调试信息
-        print(f"🔍 调试: config_dict类型: {type(config_dict)}")
-        print(f"🔍 调试: config_dict内容: {config_dict}")
+        # 确保配置是字典格式
+        config_dict = self.config
+        if hasattr(self.config, 'to_dict'):
+            config_dict = self.config.to_dict()
+        elif not isinstance(self.config, dict):
+            # 如果不是字典也没有to_dict方法，使用默认配置
+            config_dict = {}
         
         strategy = SupportResistanceStrategy(config_dict)
         confidence_calc = ConfidenceCalculator(config_dict)
