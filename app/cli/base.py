@@ -62,8 +62,19 @@ class OutputFormatter:
     @staticmethod
     def format_json(data: Any) -> str:
         """格式化为JSON输出"""
-        from main import CustomJSONEncoder
-        return json.dumps(data, indent=2, ensure_ascii=False, cls=CustomJSONEncoder)
+        import json
+        from datetime import datetime
+        
+        def json_serializer(obj):
+            """JSON序列化器，处理特殊类型"""
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            elif hasattr(obj, '__dict__'):
+                return obj.__dict__
+            else:
+                return str(obj)
+        
+        return json.dumps(data, indent=2, ensure_ascii=False, default=json_serializer)
     
     @staticmethod
     def format_csv(data: Dict[str, Any], headers: List[str] = None) -> str:

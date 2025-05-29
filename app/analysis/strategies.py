@@ -120,12 +120,19 @@ class BaseStrategy(ABC):
         self.name = name
         # 使用统一的配置读取方式
         if config is None:
+            from ..core.config import get_config
             system_config = get_config()
+            # 将ConfigLoader对象转换为字典
+            if hasattr(system_config, 'to_dict'):
+                config_dict = system_config.to_dict()
+            else:
+                config_dict = {}
+            
             # 从系统配置中获取策略相关配置
-            self.config = system_config.get('strategies', {}).get(name, {})
+            self.config = config_dict.get('strategies', {}).get(name, {})
             if not self.config:
                 # 如果没有找到特定策略配置，使用通用策略配置
-                self.config = system_config.get('analysis', {})
+                self.config = config_dict.get('analysis', {})
         else:
             self.config = config
             
@@ -250,13 +257,20 @@ class SupportResistanceStrategy(BaseStrategy):
         
         # 使用统一的配置读取方式
         if config is None:
+            from ..core.config import get_config
             system_config = get_config()
+            # 将ConfigLoader对象转换为字典
+            if hasattr(system_config, 'to_dict'):
+                config_dict = system_config.to_dict()
+            else:
+                config_dict = {}
+            
             # 从系统配置中获取支撑阻力位策略配置
-            strategy_config = system_config.get('strategies', {}).get('support_resistance', {})
+            strategy_config = config_dict.get('strategies', {}).get('support_resistance', {})
             if strategy_config:
                 default_config.update(strategy_config)
             # 也从分析配置中获取相关参数
-            analysis_config = system_config.get('analysis', {})
+            analysis_config = config_dict.get('analysis', {})
             if analysis_config:
                 # 映射分析配置到策略配置
                 if 'support_resistance' in analysis_config:
@@ -265,7 +279,7 @@ class SupportResistanceStrategy(BaseStrategy):
                         default_config['window'] = sr_config['window']
                     if 'tolerance' in sr_config:
                         default_config['tolerance'] = sr_config['tolerance']
-                signals_config = system_config.get('signals', {})
+                signals_config = config_dict.get('signals', {})
                 if 'min_confidence' in signals_config:
                     default_config['min_confidence'] = signals_config['min_confidence']
             final_config = default_config

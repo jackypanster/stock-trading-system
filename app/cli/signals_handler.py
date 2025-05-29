@@ -8,6 +8,7 @@ import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 import logging
+import traceback
 
 from .base import BaseCommandHandler, CommandResult, OutputFormatter
 from ..data.fetcher import get_fetcher, DataFetchError
@@ -98,12 +99,15 @@ class SignalsCommandHandler(BaseCommandHandler):
         except Exception as e:
             error_msg = f"信号获取失败: {e}"
             if self.logger:
-                self.logger.error(error_msg)
+                self.logger.error(error_msg, exc_info=True)
+            
+            # 打印完整的错误堆栈
+            print(f"❌ 错误详情: {traceback.format_exc()}")
             
             return CommandResult(
                 success=False,
-                error=error_msg,
-                data=None
+                message=error_msg,
+                error=e
             )
     
     def _display_execution_params(self, today: bool, symbol: Optional[str], 
@@ -188,6 +192,11 @@ class SignalsCommandHandler(BaseCommandHandler):
         
         # 创建策略和分析器实例
         config_dict = self.config.to_dict() if hasattr(self.config, 'to_dict') else self.config
+        
+        # 调试信息
+        print(f"🔍 调试: config_dict类型: {type(config_dict)}")
+        print(f"🔍 调试: config_dict内容: {config_dict}")
+        
         strategy = SupportResistanceStrategy(config_dict)
         confidence_calc = ConfidenceCalculator(config_dict)
         signal_filter = SignalFilter(config_dict)

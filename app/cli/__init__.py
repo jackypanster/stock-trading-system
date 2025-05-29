@@ -13,6 +13,7 @@ from .base import (
 )
 from .analyze_handler import AnalyzeCommandHandler
 from .signals_handler import SignalsCommandHandler
+from .router import create_cli_app
 
 __all__ = [
     'BaseCommandHandler',
@@ -21,5 +22,6 @@ __all__ = [
     'CommandResult',
     'OutputFormatter',
     'AnalyzeCommandHandler',
-    'SignalsCommandHandler'
+    'SignalsCommandHandler',
+    'create_cli_app'
 ]
